@@ -1,0 +1,52 @@
+{
+  "name": "legacy-challenge-processor",
+  "version": "1.0.0",
+  "description": "Topcoder - Legacy Challenge Processor",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "mock-api": "NODE_ENV=test node test/mock/mock",
+    "test": "nyc --reporter=html --reporter=text mocha test/unit/test.js --timeout 20000 --exit",
+    "e2e": "nyc --reporter=html --reporter=text mocha test/e2e/test.js --timeout 20000 --exit"
+  },
+  "author": "TCSCODER",
+  "license": "none",
+  "devDependencies": {
+    "should": "^13.2.3",
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.1",
+    "standard": "^12.0.1"
+  },
+  "dependencies": {
+    "@hapi/joi": "^15.0.2",
+    "bluebird": "^3.5.4",
+    "config": "^3.1.0",
+    "get-parameter-names": "^0.3.0",
+    "http-json-response": "^1.0.1",
+    "lodash": "^4.17.11",
+    "no-kafka": "^3.4.3",
+    "showdown": "^1.9.0",
+    "superagent": "^5.0.5",
+    "tc-core-library-js": "appirio-tech/tc-core-library-js.git#v2.6.1",
+    "topcoder-healthcheck-dropin": "^1.0.3",
+    "winston": "^3.2.1"
+  },
+  "engines": {
+    "node": "10.x"
+  },
+  "standard": {
+    "env": [
+      "mocha"
+    ]
+  },
+  "nyc": {
+    "exclude": [
+      "test/mock/*.js",
+      "test/common/*.js",
+      "test/unit/test.js",
+      "test/e2e/test.js"
+    ]
+  }
+}
