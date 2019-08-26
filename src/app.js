@@ -21,7 +21,7 @@ const consumer = new Kafka.GroupConsumer(helper.getKafkaOptions())
  * Whenever a new message is received by Kafka consumer,
  * this function will be invoked
  */
-const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, (m) => {
+const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, async (m) => {
   const message = m.message.value.toString('utf8')
   logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${
     m.offset}; Message: ${message}.`)
@@ -31,28 +31,34 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, (
   } catch (e) {
     logger.error('Invalid message JSON.')
     logger.logFullError(e)
+
+    // commit the message and ignore it
+    await consumer.commitOffset({ topic, partition, offset: m.offset })
     return
   }
 
   if (messageJSON.topic !== topic) {
     logger.error(`The message topic ${messageJSON.topic} doesn't match the Kafka topic ${topic}.`)
+
+    // commit the message and ignore it
+    await consumer.commitOffset({ topic, partition, offset: m.offset })
     return
   }
 
-  return (async () => {
+  try {
     if (topic === config.CREATE_CHALLENGE_TOPIC) {
       await ProcessorService.processCreate(messageJSON)
-    } else if (topic === config.UPDATE_CHALLENGE_TOPIC) {
-      await ProcessorService.processUpdate(messageJSON)
     } else {
-      throw new Error(`Invalid topic: ${topic}`)
+      await ProcessorService.processUpdate(messageJSON)
     }
+
     logger.debug('Successfully processed message')
-  })()
-  // commit offset regardless of errors
-    .then(() => {})
-    .catch((err) => { logger.logFullError(err) })
-    .finally(() => consumer.commitOffset({ topic, partition, offset: m.offset }))
+  } catch (err) {
+    logger.logFullError(err)
+  } finally {
+    // Commit offset regardless of error
+    await consumer.commitOffset({ topic, partition, offset: m.offset })
+  }
 })
 
 // check if there is kafka connection alive
