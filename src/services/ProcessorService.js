@@ -7,9 +7,16 @@ const Joi = require('@hapi/joi')
 const config = require('config')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
+const IDGenerator = require('../common/IdGenerator')
 const constants = require('../constants')
 const showdown = require('showdown')
 const converter = new showdown.Converter()
+
+const compCategoryIdGen = new IDGenerator('COMPCATEGORY_SEQ')
+const compVersionIdGen = new IDGenerator('COMPVERSION_SEQ')
+const componentIdGen = new IDGenerator('COMPONENT_SEQ')
+const compVersionDatesIdGen = new IDGenerator('COMPVERSIONDATES_SEQ')
+const compTechIdGen = new IDGenerator('COMPTECH_SEQ')
 
 /**
  * Prepare Informix statement
@@ -112,18 +119,6 @@ async function getComponentVersionId (connection, challengeId) {
 async function getComponentId (connection, componentVersionId) {
   const result = await connection.queryAsync(`select component_id from comp_versions where comp_vers_id = ${componentVersionId}`)
   return Number(result[0].component_id)
-}
-
-/**
- * Get id for corresponding table
- * @param {Object} connection the Informix connection
- * @param {String} name the sequence name
- * @returns {Number} the id
- */
-async function getId (connection, name) {
-  const result = await connection.queryAsync(`select current_value as id from sequence_object where name = '${name}'`)
-  await connection.queryAsync(`update sequence_object set current_value = current_value + 1 where name = '${name}'`)
-  return Number(result[0].id) + 1
 }
 
 /**
@@ -253,7 +248,7 @@ async function processCreate (message) {
     await connection.beginTransactionAsync()
 
     // generate component id
-    const componentId = await getId(connection, 'COMPONENT_SEQ')
+    const componentId = await componentIdGen.getNextId()
 
     // insert record into comp_catalog table
     await insertRecord(connection, 'comp_catalog', {
@@ -269,13 +264,13 @@ async function processCreate (message) {
 
     // insert record into comp_categories table
     await insertRecord(connection, 'comp_categories', {
-      comp_categories_id: await getId(connection, 'COMPCATEGORY_SEQ'),
+      comp_categories_id: await compCategoryIdGen.getNextId(),
       component_id: componentId,
       category_id: category.category.id
     })
 
     // generate component version id
-    const componentVersionId = await getId(connection, 'COMPVERSION_SEQ')
+    const componentVersionId = await compVersionIdGen.getNextId()
 
     // insert record into comp_versions table
     await insertRecord(connection, 'comp_versions', {
@@ -291,7 +286,7 @@ async function processCreate (message) {
     // insert record into comp_version_dates table, uses dummy date value
     const dummyDateValue = '2000-01-01'
     await insertRecord(connection, 'comp_version_dates', {
-      comp_version_dates_id: await getId(connection, 'COMPVERSIONDATES_SEQ'),
+      comp_version_dates_id: await compVersionDatesIdGen.getNextId(),
       comp_vers_id: componentVersionId,
       phase_id: 112,
       total_submissions: 0,
@@ -312,7 +307,7 @@ async function processCreate (message) {
       for (let tech of saveDraftContestDTO.technologies) {
         // insert record into comp_technology table
         await insertRecord(connection, 'comp_technology', {
-          comp_tech_id: await getId(connection, 'COMPTECH_SEQ'),
+          comp_tech_id: await compTechIdGen.getNextId(),
           comp_vers_id: componentVersionId,
           technology_type_id: tech.id
         })
@@ -410,7 +405,7 @@ async function processUpdate (message) {
         for (let tech of saveDraftContestDTO.technologies) {
           // insert record into comp_technology table
           await insertRecord(connection, 'comp_technology', {
-            comp_tech_id: await getId(connection, 'COMPTECH_SEQ'),
+            comp_tech_id: await compTechIdGen.getNextId(),
             comp_vers_id: componentVersionId,
             technology_type_id: tech.id
           })
