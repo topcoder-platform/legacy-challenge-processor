@@ -2,8 +2,10 @@
 
 ## Dependencies
 
-- nodejs https://nodejs.org/en/ (v10+)
+- nodejs https://nodejs.org/en/ (v8)
 - Kafka
+- Informix
+- Docker, Docker Compose
 
 ## Configuration
 
@@ -26,11 +28,9 @@ The following parameters can be set in config files or in env variables:
 - AUTH0_CLIENT_ID: Auth0 client id, used to get TC M2M token
 - AUTH0_CLIENT_SECRET: Auth0 client secret, used to get TC M2M token
 - AUTH0_PROXY_SERVER_URL: Proxy Auth0 URL, used to get TC M2M token
-- V4_CHALLENGE_API_URL: V4 challenge api url, default value is 'https://api.topcoder-dev.com/v4/challenges'
-- V4_PLATFORMS_API_URL: v4 platforms api url, default value is 'https://api.topcoder-dev.com/v4/platforms'
-- V4_TECHNOLOGIES_API_URL:v4 technologies api url, default value is 'https://api.topcoder-dev.com/v4/technologies'
 - V5_CHALLENGE_API_URL: v5 challenge api url, default value is 'http://localhost:4000/v5/challenges'
 - V5_CHALLENGE_TYPE_API_URL: v5 challenge type api url, default value is 'http://localhost:4000/v5/challengeTypes'
+- INFORMIX: Informix database configuration parameters, refer `config/default.js` for more information
 
 There is a `/health` endpoint that checks for the health of the app. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable
 
@@ -67,33 +67,40 @@ Configuration for the tests is at `config/test.js`, only add such new configurat
   `bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic challenge.notification.create --from-beginning`
 - writing/reading messages to/from other topics are similar
 
+## Topcoder Informix Database Setup
+We will use Topcoder Informix database setup on Docker.
+
+Go to `docker-ifx` folder and run `docker-compose up`
+After the database has initialized, You can use a database GUI tool(example [DBeaver](https://dbeaver.io)) to run the sql script `docker-ifx/update.sql`.
+
 ## Mock V5 Challenge API
 Mock V5 challenge api is under `test/mock` folder. You can use command `npm run mock-api` to start the server.
 
 ## Local deployment
-1. Make sure that Kafka is running as per instructions above.
-2. From the project root directory, run the following command to install the dependencies
-```
-npm install
-```
-3. To run linters if required
-```
-npm run lint
+- Given the fact that the library used to access Informix DB depends on Informix Client SDK.
+We will run the application on Docker using a base image with Informix Client SDK installed and properly configured.
+For deployment, please refer to next section 'Local Deployment with Docker'
 
-npm run lint:fix # To fix possible lint errors
+## Local Deployment with Docker
+
+1. Make sure that Kafka, mock server and Informix are running as per instructions above.
+
+2. Go to `docker` folder
+
+3. Rename the file `sample.api.env` to `api.env` And properly update the IP addresses to match your environment for the variables : KAFKA_URL, INFORMIX_HOST and V5_CHALLENGE_TYPE_API_URL( make sure to use IP address instead of hostname ( i.e localhost will not work)).Here is an example:
 ```
-4. Start the mock server
-```
-npm run mock-api
-```
-5. Start the processor and health check dropin
-```
-npm start
+KAFKA_URL=192.168.31.8:9092
+INFORMIX_HOST=192.168.31.8
+V5_CHALLENGE_TYPE_API_URL=http://192.168.31.8:4000/v5/challengeTypes
 ```
 
-## Testing
-- Run `npm run test` to execute unit tests and generate coverage report.
-- RUN `npm run e2e` to execute e2e tests and generate coverage report.
+4. Once that is done, go to run the following command
+
+```
+docker-compose up
+```
+
+5. When you are running the application for the first time, It will take some time initially to download the image and install the dependencies
 
 ## Verification
 Refer `Verification.md`
