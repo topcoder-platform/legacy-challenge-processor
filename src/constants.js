@@ -189,10 +189,34 @@ const componentCategories = {
   }
 }
 
+const EVENT_ORIGINATOR = 'legacy-challenge-processor'
+
+const EVENT_MIME_TYPE = 'application/json'
+
+const createChallengeStatusesMap = {
+  'Active': 1,
+  'Draft': 2
+}
+
+// The user id to be associated with the legacy-challenge-processor
+// It is used for auditing purpose ( create_user, and modify_user in the database)
+// Default value is set to the id of heffan user
+const processorUserId = 132456
+
+const prizeTypesIds = {
+  Contest: 15,
+  Checkpoint: 14
+}
+
 module.exports = {
   prizeSetTypes,
   phaseTypes,
   projectTypes,
   projectCategories,
-  componentCategories
+  componentCategories,
+  EVENT_ORIGINATOR,
+  EVENT_MIME_TYPE,
+  createChallengeStatusesMap,
+  processorUserId,
+  prizeTypesIds
 }

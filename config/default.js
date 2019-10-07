@@ -13,15 +13,23 @@ module.exports = {
 
   // Kafka group id
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'legacy-challenge-processor',
+  KAFKA_ERROR_TOPIC: process.env.KAFKA_ERROR_TOPIC || 'common.error.reporting',
 
   CREATE_CHALLENGE_TOPIC: process.env.CREATE_CHALLENGE_TOPIC || 'challenge.notification.create',
   UPDATE_CHALLENGE_TOPIC: process.env.UPDATE_CHALLENGE_TOPIC || 'challenge.notification.update',
+  CREATE_CHALLENGE_RESOURCE_TOPIC: process.env.CREATE_CHALLENGE_RESOURCE_TOPIC || 'challenge.action.resource.create',
+
+  OBSERVER_ROLE_UUID: process.env.OBSERVER_ROLE_UUID || 'bac822d2-725d-4973-9712-360918a09bc0',
+  COPILOT_ROLE_UUID: process.env.COPILOT_ROLE_UUID || 'bac822d2-725d-4973-9714-360918a09bc0',
+
+  // bus API config params
+  BUSAPI_URL: process.env.BUSAPI_URL || 'https://api.topcoder-dev.com/v5',
 
   AUTH0_URL: process.env.AUTH0_URL || 'https://topcoder-dev.auth0.com/oauth/token',
   AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE || 'https://m2m.topcoder-dev.com/',
   TOKEN_CACHE_TIME: process.env.TOKEN_CACHE_TIME || 90,
-  AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID || 'EkE9qU3Ey6hdJwOsF1X0duwskqcDuElW',
-  AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET || 'Iq7REiEacFmepPh0UpKoOmc6u74WjuoJriLayeVnt311qeKNBvhRNBe9BZ8WABYk',
+  AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID || '',
+  AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET || '',
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
   V5_CHALLENGE_API_URL: process.env.V5_CHALLENGE_API_URL || 'http://localhost:4000/v5/challenges',

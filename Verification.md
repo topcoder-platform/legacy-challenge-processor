@@ -1,40 +1,45 @@
 # Topcoder - Legacy Challenge Processor
 
+## Prerequisites :
+-- If you previously built the legacy-challenge-processor docker image, make sure it is removed before rebuilding the new one using this submission.
+-- This verification guides assumes using a fresh Informix database with the updates mentioned in ReadMe.md
+
 ## Verification
 start Kafka server, start Informix database, start mock api server and start the processor
 
 1. start kafka-console-producer to write messages to `challenge.notification.create` topic:
   `bin/kafka-console-producer.sh --broker-list localhost:9092 --topic challenge.notification.create`
-2. write message:
-  `{ "topic": "challenge.notification.create","originator": "challenge-api","timestamp": "2019-05-14T00:00:00.000Z","mime-type": "application/json","payload": { "id": "1a4ef3a8-ed35-40d1-b8a6-7371a700d011","typeId": "2f4ef3a8-ed35-40d1-b8a6-7371a700d098","track": "CODE","name": "test-for-legacy-challenge-processor","description": "<p>test</p>","phases": [{ "id": "id-1","name": "registration","isActive": true, "duration": 345600000 }, { "id": "id-2","name": "submission","isActive": true, "duration": 345600000 }, { "id": "id-3","name": "checkpoint","isActive": true, "duration": 172800000 } ], "prizeSets": [{ "type": "Code","prizes": [{ "type": "first-place", "value": 1000 }, { "type": "second-place","value": 500 }] }, { "type": "Check Point", "prizes": [{ "type": "first-place","value": 200 }, { "type": "second-place","value": 200 }, { "type": "third-place","value": 200 }] }],"reviewType": "COMMUNITY","markdown": false,"tags": ["Java","JUnit","MongoDB","AWS"],"projectId": 5087,"forumId": 33059 } }`
-3. Use database GUI tool to execute following statements to verify AssetDTO data.
-  ```sql
-  select * from tcs_catalog:comp_catalog where component_id >= 2010;
-  select * from tcs_catalog:comp_categories where comp_categories_id >= 2010;
-  select * from tcs_catalog:comp_versions where comp_vers_id >= 2010;
-  select * from tcs_catalog:comp_version_dates where comp_version_dates_id >= 3000;
-  select * from tcs_catalog:comp_technology where comp_tech_id >= 2200;
-  ```
-4. Use database GUI tool to insert the following test data(Only AssetDTO data has been persisted right now, so you can't retrieve the corresponding AssetDTO using the legacyId provided by message payload). project_info table will contain component version id of challenge, you can use the comp_vers_id retrieve from step 3 to replace the `value` column.
-  ```sql
-  insert into tcs_catalog:project(project_id, project_status_id, project_category_id, create_user, create_date, modify_user, modify_date) values(2000, 2, 39, 132456, current, 132456, current);
-  insert into tcs_catalog:project_info(project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) values(2000, 1, 2020, 132456, current, 132456, current);
-  ```
-5. start kafka-console-producer to write messages to `challenge.notification.update` topic:
-  `bin/kafka-console-producer.sh --broker-list localhost:9092 --topic challenge.notification.update`
-6. write message
-  `{ "topic": "challenge.notification.update","originator": "challenge-api","timestamp": "2019-05-14T00:00:00.000Z","mime-type": "application/json","payload": { "legacyId": 2000, "id": "1a4ef3a8-ed35-40d1-b8a6-7371a700d011","typeId": "2f4ef3a8-ed35-40d1-b8a6-7371a700d098","track": "CODE","name": "update-for-legacy-challenge-processor","description": "#Title\n##sub title 1\ntext\n##sub title2\nanother text\n","phases": [{ "id": "id-1","name": "registration","isActive": true, "duration": 345600000 }, { "id": "id-2","name": "submission","isActive": true, "duration": 345600000 }], "prizeSets": [{ "type": "Code","prizes": [{ "type": "first-place", "value": 800 }, { "type": "second-place","value": 400 }]}],"reviewType": "COMMUNITY","markdown":true,"tags": ["Node.js","NodeJS", "PostgreSQL"],"projectId": 5087,"forumId": 33059 } }`
-7. Use database GUI tool to execute following statements to verify AssetDTO data.
-  ```sql
-  select * from tcs_catalog:comp_catalog where component_id >= 2010;
-  select * from tcs_catalog:comp_technology where comp_tech_id >= 2200;
-  ```
-8. Try to change track, write the following message
-  `{ "topic": "challenge.notification.update","originator": "challenge-api","timestamp": "2019-05-14T00:00:00.000Z","mime-type": "application/json","payload": { "legacyId": 2000, "id": "1a4ef3a8-ed35-40d1-b8a6-7371a700d011","typeId": "2f4ef3a8-ed35-40d1-b8a6-7371a700d098","track": "WEB_DESIGNS","name": "update-for-legacy-challenge-processor","description": "#Title\n##sub title 1\ntext\n##sub title2\nanother text\n","phases": [{ "id": "id-1","name": "registration","isActive": true, "duration": 345600000 }, { "id": "id-2","name": "submission","isActive": true, "duration": 345600000 }], "prizeSets": [{ "type": "Code","prizes": [{ "type": "first-place", "value": 800 }, { "type": "second-place","value": 400 }]}],"reviewType": "COMMUNITY","markdown":true,"tags": ["Node.js","NodeJS", "PostgreSQL"],"projectId": 5087,"forumId": 33059 } }`
-9. You would see error message in app console.
+2. write create challenge message:
+  `{ "topic": "challenge.notification.create","originator": "challenge-api","timestamp": "2019-05-14T00:00:00.000Z","mime-type": "application/json","payload": { "id": "1a4ef3a8-ed35-40d1-b8a6-7371a700d011","typeId": "2f4ef3a8-ed35-40d1-b8a6-7371a700d098","track": "CODE","name": "test-for-legacy-challenge-processor","description": "<p>test</p>","phases": [{ "id": "id-1","name": "registration","isActive": true, "duration": 345600000 }, { "id": "id-2","name": "submission","isActive": true, "duration": 345600000 }, { "id": "id-3","name": "checkpoint","isActive": true, "duration": 172800000 } ], "prizeSets": [{ "type": "Code","prizes": [{ "type": "first-place", "value": 1000 }, { "type": "second-place","value": 500 }] }, { "type": "Check Point", "prizes": [{ "type": "first-place","value": 200 }, { "type": "second-place","value": 200 }, { "type": "third-place","value": 200 }] }],"reviewType": "COMMUNITY","markdown": false,"tags": ["Java","JUnit","MongoDB","AWS"],"projectId": 3000,"forumId": 33059, "copilotId": 124861, "status": "Active"} }`
 
-## Unit test Coverage
-  It is not available right now
+3. Use databasse GUI tool to execute the following sql statements to get the data of the created Challenge :
+```sql
+select * from tcs_catalog:project where tc_direct_project_id = 3000;
+```
+This statement will show an output similar to https://drive.google.com/open?id=11WySjFHRGchK4jiGni05VbMierAJw5zs
 
-## E2E test Coverage
-  It is not available right now
+The project_id value (30005520) in the output represents the legacyId of the created challenge and this value will be used in the next SQL statement
+
+4. Execute the following SQL statements to check the challenge prizes (replace <legacyId> with the value of project_id column in the previous statement):
+```sql
+select * from tcs_catalog:prize where project_id = <legacyId>
+```
+The output should be similar to this one : https://drive.google.com/open?id=1YG5MNT8mYcubZjyJPKJkHJc910Dxe5Qu
+
+5. Open your browser and navigate to https://lauscher.topcoder-dev.com/ , Login as TonyJ/appirio123
+
+6. On the top left of the main page in 'Topic:' dropdown list select the topic that was configured for CREATE_CHALLENGE_RESOURCE_TOPIC in default.js ('challenge.action.resource.create' if using default value) and click on 'View' button.
+ There should be 5 messages sent to this topic :
+ -- One message for the Copilot resource :
+  ksmith, user_id = 124861, challengeId = "1a4ef3a8-ed35-40d1-b8a6-7371a700d011" 'payload.id' from the event message payload and roleId = "bac822d2-725d-4973-9714-360918a09bc0" (The value configured in default.js COPILOT_ROLE_UUID)
+
+ https://drive.google.com/open?id=1j7j2k-HtAB2SqbHm8uicPKKzP1dTEo7E
+
+
+ -- The remaining 4 events sent to this topic are for observers , for example for user "wyzmo" (user_id = 124856), who is a Copilot on the TC direct project but is not the copilot of the created challenge :
+ Check the roleId, it should match the value configured for OBSERVER_ROLE_UUID in default.js
+
+
+ 7. Check code styling by running the following commands locally :
+   -- `npm install`
+   -- `npm run lint`

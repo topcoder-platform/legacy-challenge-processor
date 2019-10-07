@@ -17,6 +17,8 @@ const compVersionIdGen = new IDGenerator('COMPVERSION_SEQ')
 const componentIdGen = new IDGenerator('COMPONENT_SEQ')
 const compVersionDatesIdGen = new IDGenerator('COMPVERSIONDATES_SEQ')
 const compTechIdGen = new IDGenerator('COMPTECH_SEQ')
+const projectIdGen = new IDGenerator('project_id_seq')
+const prizeIdGen = new IDGenerator('prize_id_seq')
 
 /**
  * Prepare Informix statement
@@ -122,6 +124,31 @@ async function getComponentId (connection, componentVersionId) {
 }
 
 /**
+ * Get userIds with permissions on TC direct project
+ * @param {Object} connection the Informix connection
+ * @param {Number} tcDirectProjectId The TC Direct project id.
+ * @returns {Array} the ids of users who have permissions on tc direct project.
+ */
+async function getUserIdsWithTcDirectProjectPermissions (connection, tcDirectProjectId) {
+  const results = await connection.queryAsync(`select user_id as id from user_permission_grant where resource_id = ${tcDirectProjectId}`)
+  _.each(results, e => { e.id = Number(e.id) })
+  return _.map(results, 'id')
+}
+
+/**
+ * Posts an event to event bus for creating a Challenge resource.
+ *
+ * @param {String} challengeId The challenge UUID.
+ * @param {String} roleId The resource role UUID.
+ * @param {Number} memberId The id of the member.
+ */
+async function _postCreateResourceBusEvent (challengeId, roleId, memberId) {
+  await helper.postBusEvent(config.CREATE_CHALLENGE_RESOURCE_TOPIC, {
+    challengeId, roleId, memberId
+  })
+}
+
+/**
  * Construct DTO from Kafka message payload.
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
@@ -136,7 +163,8 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
       name: payload.name,
       reviewType: payload.reviewType,
       projectId: payload.projectId,
-      forumId: payload.forumId
+      forumId: payload.forumId,
+      copilotId: payload.copilotId
     }
     if (isCreated) {
       // hard code some required properties for v4 api
@@ -314,6 +342,74 @@ async function processCreate (message) {
       }
     }
 
+    // Get the challenge legacy id ( The id in tcs_catalog:project table)
+    const legacyId = await projectIdGen.getNextId()
+    const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '')
+
+    // Create the Challenge record in tcs_catalog:project table
+    await insertRecord(connection, 'project', {
+      project_id: legacyId,
+      project_status_id: constants.createChallengeStatusesMap[message.payload.status],
+      project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
+      tc_direct_project_id: saveDraftContestDTO.projectId
+    })
+
+    let prizeId
+
+    // Create the challenge contest prizes
+    _.each(saveDraftContestDTO.prizes, async (prize, i) => {
+      prizeId = await prizeIdGen.getNextId()
+
+      await insertRecord(connection, 'prize', {
+        prize_id: prizeId,
+        project_id: legacyId,
+        place: i + 1,
+        prize_amount: prize,
+        prize_type_id: constants.prizeTypesIds.Contest,
+        number_of_submissions: 1,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso
+      })
+    })
+
+    // Create challenge checkpoint prize
+    if (saveDraftContestDTO.numberOfCheckpointPrizes > 0) {
+      await insertRecord(connection, 'prize', {
+        prize_id: await prizeIdGen.getNextId(),
+        project_id: legacyId,
+        place: 1,
+        prize_amount: saveDraftContestDTO.checkpointPrize,
+        prize_type_id: constants.prizeTypesIds.Checkpoint,
+        number_of_submissions: saveDraftContestDTO.numberOfCheckpointPrizes,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso
+      })
+    }
+
+    // Post the bus event for adding the Copilot resource
+    await _postCreateResourceBusEvent(message.payload.id, config.COPILOT_ROLE_UUID, saveDraftContestDTO.copilotId)
+
+    // Get the list of user ids who have permissions on TC direct project to which the challenge is associated
+    // These users should be added as obesrvers for the challenge
+    let observersIds = await getUserIdsWithTcDirectProjectPermissions(connection, saveDraftContestDTO.projectId)
+
+    // filter out the Callenge Copilot from the observers id array
+    observersIds = observersIds.filter((id) => id !== Number(saveDraftContestDTO.copilotId))
+
+    // Post the events for adding the observers to the challenge
+    const promises = observersIds.map(observerId => {
+      _postCreateResourceBusEvent(message.payload.id, config.OBSERVER_ROLE_UUID, observerId)
+    })
+    await Promise.all(promises)
+
     // commit the transaction
     await connection.commitTransactionAsync()
   } catch (e) {
@@ -350,7 +446,9 @@ processCreate.schema = {
       markdown: Joi.boolean().required(),
       tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
       projectId: Joi.number().integer().positive().required(),
-      forumId: Joi.number().integer().positive().required()
+      forumId: Joi.number().integer().positive().required(),
+      copilotId: Joi.number().integer().positive().required(),
+      status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
     }).unknown(true).required()
   }).required()
 }
