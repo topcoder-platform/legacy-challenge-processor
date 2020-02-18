@@ -43,4 +43,4 @@ COPY . /app
 WORKDIR /app
 RUN rm -rf node_modules && npm install --unsafe-perm
 
-ENTRYPOINT [ "npm" ]
+ENTRYPOINT ["npm", "start"]
