@@ -1,11 +1,26 @@
 # Topcoder - Legacy Challenge Processor
 
-## Dependencies
+This microservice processes kafka events related to challenges and backfills data in Informix (legacy) DB.
 
-- nodejs https://nodejs.org/en/ (v8)
-- Kafka
-- Informix
-- Docker, Docker Compose
+### Development deployment status
+[![CircleCI](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/develop.svg?style=svg)](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/develop)
+### Production deployment status
+[![CircleCI](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/master.svg?style=svg)](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/master)
+
+## Intended use
+
+- Processor
+
+## Related repos
+
+- [Challenge API](https://github.com/topcoder-platform/challenge-api)
+
+## Prerequisites
+- [NodeJS](https://nodejs.org/en/) (v8)
+- [Docker](https://www.docker.com/)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [Kafka](https://kafka.apache.org/)
+- [Informix](https://www.ibm.com/in-en/products/informix)
 
 ## Configuration
 
@@ -44,7 +59,16 @@ Configuration for the tests is at `config/test.js`, only add such new configurat
 - WAIT_TIME: wait time used in test, default is 1500 or 1.5 second
 - V4_CHALLENGE_API_URL: the v4 challenge api url, used mock v4 challenge api in testing
 
-## Local Kafka setup
+
+You can find sample `.env` files inside the `/docker` directory.
+
+## Local Deployment
+###   Foreman Setup
+ To install foreman follow this [link](https://theforeman.org/manuals/1.24/#3.InstallingForeman)
+ To know how to use foreman follow this [link](https://theforeman.org/manuals/1.24/#2.Quickstart)
+
+
+### Local Kafka setup
 
 - `http://kafka.apache.org/quickstart` contains details to setup and manage Kafka server,
   below provides details to setup Kafka server in Linux/Mac, Windows will use bat commands in bin/windows instead
@@ -72,7 +96,7 @@ Configuration for the tests is at `config/test.js`, only add such new configurat
   `bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic challenge.notification.create --from-beginning`
 - writing/reading messages to/from other topics are similar
 
-## Topcoder Informix Database Setup
+### Topcoder Informix Database Setup
 We will use Topcoder Informix database setup on Docker.
 
 Go to `docker-ifx` folder and run `docker-compose up`
@@ -86,16 +110,12 @@ Additionally the above script will do the following :
 -- Assign both copilots (ksmith and wyzmo) to the TC direct project with project_full permissions
 -- Add three users ('Hung', 'twight' and 'dok_tester') with project_report, project_read and project_write permissions respectively.
 
-
-## Mock V5 Challenge API
-Mock V5 challenge api is under `test/mock` folder. You can use command `npm run mock-api` to start the server. (dependencies should be installed prior to running mock-api with `npm install`)
-
-## Local deployment
+### Local deployment without Docker
 - Given the fact that the library used to access Informix DB depends on Informix Client SDK.
 We will run the application on Docker using a base image with Informix Client SDK installed and properly configured.
 For deployment, please refer to next section 'Local Deployment with Docker'
 
-## Local Deployment with Docker
+### Local Deployment with Docker
 
 1. Make sure that Kafka, mock server and Informix are running as per instructions above.
 
@@ -120,9 +140,47 @@ docker-compose up
 
 5. When you are running the application for the first time, It will take some time initially to download the image and install the dependencies
 
-## Verification
-Refer to `Verification.md`
 
-## Notes :
+
+## Production Deployment
+
+- TBD
+
+## Running tests
+
+### Configuration
+
+Test configuration is at `config/test.js`. You don't need to change them.
+The following test parameters can be set in config file or in env variables:
+
+- MOCK_API_PORT: port of mock api
+- WAIT_TIME: wait time used in test, default is 1000 or one second
+- V4_CHALLENGE_API_URL: url of challenge api v4
+
+### Prepare
+- Start Local services.
+- Various config parameters should be properly set.
+
+### Running unit tests
+To run unit tests 
+
+```bash
+npm run test
+```
+
+### Running integration tests
+To run integration tests 
+
+```bash
+npm run e2e
+```
+## Running tests in CI
+
+- TBD
+
+## Verification
+Refer to the verification document `Verification.md`
+
+## Notes
 In constants.js, 'processorUserId' is set to 132456 which is the id of the user 'heffan'. It used to populated auditing fields for the created records (create_user and modify_user).
 In Production, a dedicated user should be created for the legacy-challenge-processor and this value should be properly updated in constants.js.
