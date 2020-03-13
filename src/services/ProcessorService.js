@@ -178,7 +178,11 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
       data.track = typeRes.body.name
     }
     if (payload.description) {
-      data.detailedRequirements = payload.markdown ? converter.makeHtml(payload.description) : payload.description
+      try {
+        data.detailedRequirements = converter.makeHtml(payload.description)
+      } catch (e) {
+        data.detailedRequirements = payload.description
+      }
     }
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.registration)
@@ -443,7 +447,6 @@ processCreate.schema = {
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1).required(),
       reviewType: Joi.string().required(),
-      markdown: Joi.boolean().required(),
       tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
       projectId: Joi.number().integer().positive().required(),
       forumId: Joi.number().integer().positive().required(),
@@ -544,7 +547,6 @@ processUpdate.schema = {
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1),
       reviewType: Joi.string(),
-      markdown: Joi.boolean(),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
       projectId: Joi.number().integer().positive(),
       forumId: Joi.number().integer().positive()
