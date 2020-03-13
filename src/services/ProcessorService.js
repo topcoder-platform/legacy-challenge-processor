@@ -163,8 +163,10 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
       name: payload.name,
       reviewType: payload.reviewType,
       projectId: payload.projectId,
-      forumId: payload.forumId,
-      copilotId: payload.copilotId
+      forumId: payload.forumId
+    }
+    if (payload.copilotId) {
+      data.copilotId = payload.copilotId
     }
     if (isCreated) {
       // hard code some required properties for v4 api
@@ -399,14 +401,18 @@ async function processCreate (message) {
     }
 
     // Post the bus event for adding the Copilot resource
-    await _postCreateResourceBusEvent(message.payload.id, config.COPILOT_ROLE_UUID, saveDraftContestDTO.copilotId)
+    if (saveDraftContestDTO.copilotId) {
+      await _postCreateResourceBusEvent(message.payload.id, config.COPILOT_ROLE_UUID, saveDraftContestDTO.copilotId)
+    }
 
     // Get the list of user ids who have permissions on TC direct project to which the challenge is associated
     // These users should be added as obesrvers for the challenge
     let observersIds = await getUserIdsWithTcDirectProjectPermissions(connection, saveDraftContestDTO.projectId)
 
     // filter out the Callenge Copilot from the observers id array
-    observersIds = observersIds.filter((id) => id !== Number(saveDraftContestDTO.copilotId))
+    if (saveDraftContestDTO.copilotId) {
+      observersIds = observersIds.filter((id) => id !== Number(saveDraftContestDTO.copilotId))
+    }
 
     // Post the events for adding the observers to the challenge
     const promises = observersIds.map(observerId => {
@@ -450,7 +456,7 @@ processCreate.schema = {
       tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
       projectId: Joi.number().integer().positive().required(),
       forumId: Joi.number().integer().positive().required(),
-      copilotId: Joi.number().integer().positive().required(),
+      copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
     }).unknown(true).required()
   }).required()
