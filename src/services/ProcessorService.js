@@ -236,6 +236,7 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
     }
     return data
   } catch (err) {
+    // Debugging
     logger.debug(err)
     if (err.status) {
       // extract error message from V5 API
