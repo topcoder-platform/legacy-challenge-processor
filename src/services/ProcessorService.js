@@ -381,10 +381,11 @@ async function processCreate (message) {
       project_mm_spec_id: null, // 'N/A',
     })
 
-    await insertRecord(connection, 'project_category_lu', {
-      project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
-      description: constants.projectCategories[saveDraftContestDTO.subTrack].name,
-    })
+    // TODO: this is a lookup table. Should not insert records
+    // await insertRecord(connection, 'project_category_lu', {
+    //   project_type_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
+    //   description: constants.projectCategories[saveDraftContestDTO.subTrack].name,
+    // })
 
     await insertRecord(connection, 'project_info', {
       project_id: legacyId,
@@ -460,16 +461,18 @@ async function processCreate (message) {
       })
     }
 
-    await insertRecord(connection, 'project_status_lu', {
-      name: data.status,
-      project_status_id: constants.createChallengeStatusesMap[message.payload.status],
-    })
+    // TODO: this is a lookup table. Should not insert records
+    // await insertRecord(connection, 'project_status_lu', {
+    //   name: data.status,
+    //   project_status_id: constants.createChallengeStatusesMap[message.payload.status],
+    // })
 
     let fileTypeId = await fileTypeIdGen.getNextId()
 
-    await insertRecord(connection, 'file_type_lu', {
-      file_type_id: fileTypeId
-    })
+    // TODO: this is a lookup table. Should not insert records
+    // await insertRecord(connection, 'file_type_lu', {
+    //   file_type_id: fileTypeId
+    // })
 
     await insertRecord(connection, 'project_file_type_xref', {
       contest_id: legacyId,
