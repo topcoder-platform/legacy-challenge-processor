@@ -87,6 +87,22 @@ async function getRequest (url, m2mToken) {
 }
 
 /**
+ * Uses superagent to proxy put request
+ * @param {String} url the url
+ * @param {Object} body the body
+ * @param {String} m2mToken the M2M token
+ * @returns {Object} the response
+ */
+async function putRequest (url, body, m2mToken) {
+  return request
+    .put(url)
+    .send(body)
+    .set('Authorization', `Bearer ${m2mToken}`)
+    .set('Content-Type', 'application/json')
+    .set('Accept', 'application/json')
+}
+
+/**
  * Get Bus API Client
  * @return {Object} Bus API Client Instance
  */
@@ -123,6 +139,7 @@ module.exports = {
   getM2MToken,
   patchRequest,
   getRequest,
+  putRequest,
   getInformixConnection,
   postBusEvent
 }
