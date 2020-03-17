@@ -393,6 +393,11 @@ async function processCreate (message) {
     // })
 
     console.log('Insert into project_info')
+    console.log({
+      project_id: legacyId,
+      project_info_type_id: saveDraftContestDTO.typeId,
+      value: saveDraftContestDTO.name
+    })
     await insertRecord(connection, 'project_info', {
       project_id: legacyId,
       project_info_type_id: saveDraftContestDTO.typeId,
