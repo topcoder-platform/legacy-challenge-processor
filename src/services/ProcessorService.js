@@ -19,6 +19,7 @@ const compVersionDatesIdGen = new IDGenerator('COMPVERSIONDATES_SEQ')
 const compTechIdGen = new IDGenerator('COMPTECH_SEQ')
 const projectIdGen = new IDGenerator('project_id_seq')
 const prizeIdGen = new IDGenerator('prize_id_seq')
+const fileTypeIdGen = new IDGenerator('file_type_id_seq')
 
 /**
  * Prepare Informix statement
@@ -163,7 +164,8 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
       name: payload.name,
       reviewType: payload.reviewType,
       projectId: payload.projectId,
-      forumId: payload.forumId
+      forumId: payload.forumId,
+      status: payload.status
     }
     if (payload.copilotId) {
       data.copilotId = payload.copilotId
@@ -186,19 +188,30 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
         data.detailedRequirements = payload.description
       }
     }
+    if (payload.privateDescription) {
+      try {
+        data.privateDescription = converter.makeHtml(payload.privateDescription)
+      } catch (e) {
+        data.privateDescription = payload.privateDescription
+      }
+    }
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.registration)
       const submissionPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.submission)
+      data.registrationPhaseId = registrationPhase.id
       data.registrationStartsAt = new Date().toISOString()
       data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
+      data.submissionPhaseId = submissionPhase.id
       data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.checkpoint)
       if (checkpointPhase) {
+        data.checkpointSubmissionPhaseId = checkpointPhase.id
         data.checkpointSubmissionStartsAt = new Date().toISOString()
         data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
       } else {
+        data.checkpointSubmissionPhaseId = null
         data.checkpointSubmissionStartsAt = null
         data.checkpointSubmissionEndsAt = null
       }
@@ -363,7 +376,114 @@ async function processCreate (message) {
       create_date: currentDateIso,
       modify_user: constants.processorUserId,
       modify_date: currentDateIso,
-      tc_direct_project_id: saveDraftContestDTO.projectId
+      tc_direct_project_id: saveDraftContestDTO.projectId,
+      project_studio_spec_id: 'N/A',
+      project_mm_spec_id: 'N/A'
+    })
+
+    await insertRecord(connection, 'project_category_lu', {
+      project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
+      description: constants.projectCategories[saveDraftContestDTO.subTrack].name,
+    })
+
+    await insertRecord(connection, 'project_info', {
+      project_id: legacyId,
+      project_info_type_id: saveDraftContestDTO.typeId,
+      value: saveDraftContestDTO.name
+    })
+
+    await insertRecord(connection, 'project_studio_specification', {
+      project_studio_spec_id: 'N/A',
+      contest_description_text: saveDraftContestDTO.detailedRequirements,
+      contest_introduction: 'N/A',
+      round_one_introduction: 'N/A',
+      round_two_introduction: 'N/A'
+    })
+
+    await insertRecord(connection, 'project_spec', {
+      project_id: legacyId,
+      detailed_requirements_text: saveDraftContestDTO.detailedRequirements,
+      private_description_text: saveDraftContestDTO.privateDescription,
+      final_submission_guidelines_text: 'N/A',
+      version: 'N/A'
+    })
+
+    await insertRecord(connection, 'project_mm_specification', {
+      project_mm_spec_id: 'N/A',
+      match_details: 'N/A',
+      match_rules: 'N/A',
+      problem_id: 'N/A'
+    })
+
+    await insertRecord(connection, 'phase_criteria', {
+      phase_criteria_type_id: 'N/A',
+      parameter: 'N/A'
+    })
+
+    await insertRecord(connection, 'project_phase', {
+      project_id: legacyId,
+      project_phase_id: data.registrationPhaseId,
+      phase_type_id: null,
+      phase_status_id: 'N/A',
+      actual_start_time: data.registrationStartsAt,
+      actual_end_time: data.registrationEndsAt
+    })
+
+    await insertRecord(connection, 'project_phase', {
+      project_id: legacyId,
+      project_phase_id: data.registrationPhaseId,
+      phase_type_id: null,
+      phase_status_id: 'N/A',
+      actual_start_time: data.registrationStartsAt,
+      actual_end_time: data.registrationEndsAt
+    })
+
+    await insertRecord(connection, 'project_phase', {
+      project_id: legacyId,
+      project_phase_id: data.submissionPhaseId,
+      phase_type_id: null,
+      phase_status_id: 'N/A',
+      actual_start_time: data.registrationEndsAt,
+      actual_end_time: data.submissionEndsAt
+    })
+
+    if (data.checkpointSubmissionStartsAt && data.checkpointSubmissionEndsAt) {
+      await insertRecord(connection, 'project_phase', {
+        project_id: legacyId,
+        project_phase_id: data.checkpointSubmissionPhaseId,
+        phase_type_id: null,
+        phase_status_id: 'N/A',
+        actual_start_time: data.checkpointSubmissionStartsAt,
+        actual_end_time: data.checkpointSubmissionEndsAt
+      })
+    }
+
+    await insertRecord(connection, 'project_status_lu', {
+      name: data.status,
+      project_status_id: constants.createChallengeStatusesMap[message.payload.status],
+    })
+
+    let fileTypeId = await fileTypeIdGen.getNextId()
+
+    await insertRecord(connection, 'file_type_lu', {
+      file_type_id: fileTypeId
+    })
+
+    await insertRecord(connection, 'project_file_type_xref', {
+      contest_id: legacyId,
+      project_id: legacyId,
+      file_type_id: fileTypeId,
+      description: 'N/A'
+    })
+
+    await insertRecord(connection, 'contest', {
+      contest_id: legacyId,
+    })
+
+    await insertRecord(connection, 'event', {
+      event_id: 'N/A',
+      event_desc: 'N/A',
+      event_short_desc: 'N/A'
     })
 
     let prizeId
@@ -424,6 +544,7 @@ async function processCreate (message) {
 
     // commit the transaction
     await connection.commitTransactionAsync()
+    await helper.putRequest(`${config.V4_ES_FEEDER_API_URL}`, { param: { challengeIds: [legacyId] } },m2mToken)
   } catch (e) {
     await connection.rollbackTransactionAsync()
     throw e
@@ -444,7 +565,10 @@ processCreate.schema = {
       track: Joi.string().required(),
       name: Joi.string().required(),
       description: Joi.string().required(),
+      privateDescription: Joi.string(),
+      status: Joi.string().required(),
       phases: Joi.array().items(Joi.object().keys({
+        id: Joi.string().required(),
         name: Joi.string().required(),
         duration: Joi.number().positive().required()
       }).unknown(true)).min(1).required(),
@@ -544,7 +668,10 @@ processUpdate.schema = {
       track: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
+      privateDescription: Joi.string(),
+      status: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
+        id: Joi.string().required(),
         name: Joi.string().required(),
         duration: Joi.number().positive().required()
       }).unknown(true)).min(1),
