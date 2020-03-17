@@ -180,6 +180,7 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
       data.track = typeRes.body.name
+      data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
       try {
@@ -393,14 +394,9 @@ async function processCreate (message) {
     // })
 
     console.log('Insert into project_info')
-    console.log({
-      project_id: legacyId,
-      project_info_type_id: saveDraftContestDTO.typeId,
-      value: saveDraftContestDTO.name
-    })
     await insertRecord(connection, 'project_info', {
       project_id: legacyId,
-      project_info_type_id: saveDraftContestDTO.typeId,
+      project_info_type_id: saveDraftContestDTO.legacyTypeId,
       value: saveDraftContestDTO.name
     })
 
