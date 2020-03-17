@@ -397,7 +397,8 @@ async function processCreate (message) {
     await insertRecord(connection, 'project_info', {
       project_id: legacyId,
       project_info_type_id: saveDraftContestDTO.legacyTypeId,
-      value: saveDraftContestDTO.name
+      value: saveDraftContestDTO.name,
+      create_user: constants.processorUserId
     })
 
     console.log('Insert into project_studio_specification')
