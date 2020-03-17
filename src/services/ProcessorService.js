@@ -382,6 +382,7 @@ async function processCreate (message) {
     })
 
     // TODO: this is a lookup table. Should not insert records
+    
     // await insertRecord(connection, 'project_category_lu', {
     //   project_type_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
     //   description: constants.projectCategories[saveDraftContestDTO.subTrack].name,
