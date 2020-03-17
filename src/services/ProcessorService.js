@@ -399,7 +399,9 @@ async function processCreate (message) {
       project_info_type_id: saveDraftContestDTO.legacyTypeId,
       value: saveDraftContestDTO.name,
       create_user: constants.processorUserId,
-      create_date: currentDateIso
+      modify_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_date: currentDateIso
     })
 
     console.log('Insert into project_studio_specification')
