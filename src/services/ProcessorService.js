@@ -377,8 +377,8 @@ async function processCreate (message) {
       modify_user: constants.processorUserId,
       modify_date: currentDateIso,
       tc_direct_project_id: saveDraftContestDTO.projectId,
-      project_studio_spec_id: 'N/A',
-      project_mm_spec_id: 'N/A'
+      project_studio_spec_id: null, // 'N/A',
+      project_mm_spec_id: null, // 'N/A',
     })
 
     await insertRecord(connection, 'project_category_lu', {
@@ -393,7 +393,7 @@ async function processCreate (message) {
     })
 
     await insertRecord(connection, 'project_studio_specification', {
-      project_studio_spec_id: 'N/A',
+      project_studio_spec_id: null, // 'N/A',
       contest_description_text: saveDraftContestDTO.detailedRequirements,
       contest_introduction: 'N/A',
       round_one_introduction: 'N/A',
@@ -408,23 +408,25 @@ async function processCreate (message) {
       version: 'N/A'
     })
 
-    await insertRecord(connection, 'project_mm_specification', {
-      project_mm_spec_id: 'N/A',
-      match_details: 'N/A',
-      match_rules: 'N/A',
-      problem_id: 'N/A'
-    })
+    // TODO: Not needed?
+    // await insertRecord(connection, 'project_mm_specification', {
+    //   project_mm_spec_id: null, // 'N/A',
+    //   match_details: 'N/A',
+    //   match_rules: 'N/A',
+    //   problem_id: null // 'N/A',
+    // })
 
-    await insertRecord(connection, 'phase_criteria', {
-      phase_criteria_type_id: 'N/A',
-      parameter: 'N/A'
-    })
+    // TODO: Not needed?
+    // await insertRecord(connection, 'phase_criteria', {
+    //   phase_criteria_type_id: 'N/A',
+    //   parameter: 'N/A'
+    // })
 
     await insertRecord(connection, 'project_phase', {
       project_id: legacyId,
       project_phase_id: data.registrationPhaseId,
       phase_type_id: null,
-      phase_status_id: 'N/A',
+      phase_status_id: null, // 'N/A',
       actual_start_time: data.registrationStartsAt,
       actual_end_time: data.registrationEndsAt
     })
@@ -433,7 +435,7 @@ async function processCreate (message) {
       project_id: legacyId,
       project_phase_id: data.registrationPhaseId,
       phase_type_id: null,
-      phase_status_id: 'N/A',
+      phase_status_id: null, // 'N/A',
       actual_start_time: data.registrationStartsAt,
       actual_end_time: data.registrationEndsAt
     })
@@ -442,7 +444,7 @@ async function processCreate (message) {
       project_id: legacyId,
       project_phase_id: data.submissionPhaseId,
       phase_type_id: null,
-      phase_status_id: 'N/A',
+      phase_status_id: null, // 'N/A',
       actual_start_time: data.registrationEndsAt,
       actual_end_time: data.submissionEndsAt
     })
@@ -452,7 +454,7 @@ async function processCreate (message) {
         project_id: legacyId,
         project_phase_id: data.checkpointSubmissionPhaseId,
         phase_type_id: null,
-        phase_status_id: 'N/A',
+        phase_status_id: null, // 'N/A',
         actual_start_time: data.checkpointSubmissionStartsAt,
         actual_end_time: data.checkpointSubmissionEndsAt
       })
@@ -480,11 +482,12 @@ async function processCreate (message) {
       contest_id: legacyId,
     })
 
-    await insertRecord(connection, 'event', {
-      event_id: 'N/A',
-      event_desc: 'N/A',
-      event_short_desc: 'N/A'
-    })
+    // TODO: Not needed?
+    // await insertRecord(connection, 'event', {
+    //   event_id: 'N/A',
+    //   event_desc: 'N/A',
+    //   event_short_desc: 'N/A'
+    // })
 
     let prizeId
 
