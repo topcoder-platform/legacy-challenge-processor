@@ -369,7 +369,7 @@ async function processCreate (message) {
 
     // Get the challenge legacy id ( The id in tcs_catalog:project table)
     const legacyId = await projectIdGen.getNextId()
-    const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '')
+    const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '').split('.')[0]
 
     // Create the Challenge record in tcs_catalog:project table
     console.log('Insert into project')
