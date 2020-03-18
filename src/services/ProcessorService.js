@@ -180,6 +180,7 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
       data.track = typeRes.body.name
+      data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
       try {
@@ -310,7 +311,7 @@ async function processCreate (message) {
       status_id: 102,
       root_category_id: category.rootCategory.id
     })
-
+    console.log('Insert into comp_categories')
     // insert record into comp_categories table
     await insertRecord(connection, 'comp_categories', {
       comp_categories_id: await compCategoryIdGen.getNextId(),
@@ -322,6 +323,7 @@ async function processCreate (message) {
     const componentVersionId = await compVersionIdGen.getNextId()
 
     // insert record into comp_versions table
+    console.log('Insert into comp_versions')
     await insertRecord(connection, 'comp_versions', {
       comp_vers_id: componentVersionId,
       component_id: componentId,
@@ -334,6 +336,7 @@ async function processCreate (message) {
 
     // insert record into comp_version_dates table, uses dummy date value
     const dummyDateValue = '2000-01-01'
+    console.log('Insert into comp_version_dates')
     await insertRecord(connection, 'comp_version_dates', {
       comp_version_dates_id: await compVersionDatesIdGen.getNextId(),
       comp_vers_id: componentVersionId,
@@ -355,6 +358,7 @@ async function processCreate (message) {
     if (!_.includes(['MARATHON_MATCH', 'CONCEPTUALIZATION', 'SPECIFICATION'], track) && !isStudio && saveDraftContestDTO.technologies) {
       for (let tech of saveDraftContestDTO.technologies) {
         // insert record into comp_technology table
+        console.log('Insert into comp_technology')
         await insertRecord(connection, 'comp_technology', {
           comp_tech_id: await compTechIdGen.getNextId(),
           comp_vers_id: componentVersionId,
@@ -368,6 +372,7 @@ async function processCreate (message) {
     const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '')
 
     // Create the Challenge record in tcs_catalog:project table
+    console.log('Insert into project')
     await insertRecord(connection, 'project', {
       project_id: legacyId,
       project_status_id: constants.createChallengeStatusesMap[message.payload.status],
@@ -377,13 +382,14 @@ async function processCreate (message) {
       modify_user: constants.processorUserId,
       modify_date: currentDateIso,
       tc_direct_project_id: saveDraftContestDTO.projectId,
-      project_studio_spec_id: null,
-      project_mm_spec_id: null
+      project_studio_spec_id: null, // 'N/A'
+      project_mm_spec_id: null // 'N/A'
     })
 
+    console.log('Insert into project_info')
     await insertRecord(connection, 'project_info', {
       project_id: legacyId,
-      project_info_type_id: 1,
+      project_info_type_id: saveDraftContestDTO.legacyTypeId,
       value: saveDraftContestDTO.name,
       create_user: constants.processorUserId,
       create_date: currentDateIso,
@@ -411,6 +417,7 @@ async function processCreate (message) {
 
     let projectPhaseId = await projectPhaseIdGen.getNextId()
 
+    console.log('Insert into project_phase')
     await insertRecord(connection, 'project_phase', {
       project_id: legacyId,
       project_phase_id: projectPhaseId,
@@ -427,6 +434,7 @@ async function processCreate (message) {
       modify_date: currentDateIso,
     })
 
+    console.log('Insert into project_phase')
     await insertRecord(connection, 'project_phase', {
       project_id: legacyId,
       project_phase_id: await projectPhaseIdGen.getNextId(),
@@ -478,6 +486,7 @@ async function processCreate (message) {
       project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id
     })
 
+    console.log('Insert into project_file_type_xref')
     await insertRecord(connection, 'project_file_type_xref', {
       project_id: legacyId,
       file_type_id: 1
@@ -494,6 +503,7 @@ async function processCreate (message) {
     // Create the challenge contest prizes
     _.each(saveDraftContestDTO.prizes, async (prize, i) => {
       prizeId = await prizeIdGen.getNextId()
+      console.log('Insert into prize')
 
       await insertRecord(connection, 'prize', {
         prize_id: prizeId,
@@ -511,6 +521,7 @@ async function processCreate (message) {
 
     // Create challenge checkpoint prize
     if (saveDraftContestDTO.numberOfCheckpointPrizes > 0) {
+      console.log('Insert into prize')
       await insertRecord(connection, 'prize', {
         prize_id: await prizeIdGen.getNextId(),
         project_id: legacyId,
