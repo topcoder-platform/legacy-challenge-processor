@@ -407,7 +407,7 @@ async function processCreate (message) {
     console.log('Insert into project_studio_specification')
     await insertRecord(connection, 'project_studio_specification', {
       project_studio_spec_id: null, // 'N/A',
-      contest_description_text: saveDraftContestDTO.detailedRequirements,
+      contest_description_text: new Blob([saveDraftContestDTO.detailedRequirements], { type: 'Text/Byte' }),
       contest_introduction: 'N/A',
       round_one_introduction: 'N/A',
       round_two_introduction: 'N/A'
