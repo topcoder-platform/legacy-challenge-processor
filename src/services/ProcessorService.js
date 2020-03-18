@@ -373,7 +373,7 @@ async function processCreate (message) {
 
     // Create the Challenge record in tcs_catalog:project table
     console.log('Insert into project')
-    await insertRecord(connection, 'project', {
+    const newProj = {
       project_id: legacyId,
       project_status_id: constants.createChallengeStatusesMap[message.payload.status],
       project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
@@ -384,7 +384,9 @@ async function processCreate (message) {
       tc_direct_project_id: saveDraftContestDTO.projectId,
       project_studio_spec_id: null, // 'N/A'
       project_mm_spec_id: null // 'N/A'
-    })
+    }
+    console.log(newProj)
+    await insertRecord(connection, 'project', newProj)
 
     console.log('Insert into project_info')
     await insertRecord(connection, 'project_info', {
