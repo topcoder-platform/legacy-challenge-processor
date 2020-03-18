@@ -18,8 +18,8 @@ const componentIdGen = new IDGenerator('COMPONENT_SEQ')
 const compVersionDatesIdGen = new IDGenerator('COMPVERSIONDATES_SEQ')
 const compTechIdGen = new IDGenerator('COMPTECH_SEQ')
 const projectIdGen = new IDGenerator('project_id_seq')
+const projectPhaseIdGen = new IDGenerator('project_phase_id_seq')
 const prizeIdGen = new IDGenerator('prize_id_seq')
-const fileTypeIdGen = new IDGenerator('file_type_id_seq')
 
 /**
  * Prepare Informix statement
@@ -198,22 +198,22 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.registration)
       const submissionPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.submission)
-      data.registrationPhaseId = registrationPhase.id
       data.registrationStartsAt = new Date().toISOString()
       data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
-      data.submissionPhaseId = submissionPhase.id
+      data.registrationDuration = registrationPhase.duration
       data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
+      data.submissionDuration = submissionPhase.duration
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.checkpoint)
       if (checkpointPhase) {
-        data.checkpointSubmissionPhaseId = checkpointPhase.id
         data.checkpointSubmissionStartsAt = new Date().toISOString()
         data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
+        data.checkpointSubmissionDuration = checkpointPhase.duration
       } else {
-        data.checkpointSubmissionPhaseId = null
         data.checkpointSubmissionStartsAt = null
         data.checkpointSubmissionEndsAt = null
+        data.checkpointSubmissionDuration = null
       }
     }
     if (payload.prizeSets) {
@@ -377,111 +377,114 @@ async function processCreate (message) {
       modify_user: constants.processorUserId,
       modify_date: currentDateIso,
       tc_direct_project_id: saveDraftContestDTO.projectId,
-      project_studio_spec_id: 'N/A',
-      project_mm_spec_id: 'N/A'
-    })
-
-    await insertRecord(connection, 'project_category_lu', {
-      project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
-      description: constants.projectCategories[saveDraftContestDTO.subTrack].name,
+      project_studio_spec_id: null,
+      project_mm_spec_id: null
     })
 
     await insertRecord(connection, 'project_info', {
       project_id: legacyId,
-      project_info_type_id: saveDraftContestDTO.typeId,
-      value: saveDraftContestDTO.name
+      project_info_type_id: 1,
+      value: saveDraftContestDTO.name,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
     })
 
-    await insertRecord(connection, 'project_studio_specification', {
-      project_studio_spec_id: 'N/A',
-      contest_description_text: saveDraftContestDTO.detailedRequirements,
-      contest_introduction: 'N/A',
-      round_one_introduction: 'N/A',
-      round_two_introduction: 'N/A'
-    })
+    // The next 2 queries use inline prepared statement because all those contains 'TEXT' column which doesn't align well with ODBC
+    const projectStudioRawStatement = "insert into project_studio_specification (project_studio_spec_id, contest_description_text, contest_introduction, round_one_introduction, round_two_introduction, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', 'N/A', 'N/A', 'N/A', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
+    const projectStudioStatement = await connection.prepare(projectStudioRawStatement);
+    await projectStudioStatement.execute()
 
-    await insertRecord(connection, 'project_spec', {
-      project_id: legacyId,
-      detailed_requirements_text: saveDraftContestDTO.detailedRequirements,
-      private_description_text: saveDraftContestDTO.privateDescription,
-      final_submission_guidelines_text: 'N/A',
-      version: 'N/A'
-    })
+    const projectSpecRawStatement = "insert into project_spec (project_spec_id, project_id, detailed_requirements_text, private_description_text, final_submission_guidelines_text, version, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", " + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', '" + (saveDraftContestDTO.privateDescription || 'N/A') + "', 'N/A', '" + 0 + "', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
+    const projectSpecStatement = await connection.prepare(projectSpecRawStatement);
+    await projectSpecStatement.execute()
 
     await insertRecord(connection, 'project_mm_specification', {
-      project_mm_spec_id: 'N/A',
-      match_details: 'N/A',
-      match_rules: 'N/A',
-      problem_id: 'N/A'
+      project_mm_spec_id: legacyId,
+      problem_id: 0,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
     })
 
-    await insertRecord(connection, 'phase_criteria', {
-      phase_criteria_type_id: 'N/A',
-      parameter: 'N/A'
+    let projectPhaseId = await projectPhaseIdGen.getNextId()
+
+    await insertRecord(connection, 'project_phase', {
+      project_id: legacyId,
+      project_phase_id: projectPhaseId,
+      phase_type_id: 1,
+      phase_status_id: 2,
+      actual_start_time: saveDraftContestDTO.registrationStartsAt.replace('T', ' ').replace('Z', ''),
+      actual_end_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_start_time: saveDraftContestDTO.registrationStartsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_end_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      duration: saveDraftContestDTO.registrationDuration,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
     })
 
     await insertRecord(connection, 'project_phase', {
       project_id: legacyId,
-      project_phase_id: data.registrationPhaseId,
-      phase_type_id: null,
-      phase_status_id: 'N/A',
-      actual_start_time: data.registrationStartsAt,
-      actual_end_time: data.registrationEndsAt
+      project_phase_id: await projectPhaseIdGen.getNextId(),
+      phase_type_id: 2,
+      phase_status_id: 2,
+      actual_start_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      actual_end_time: saveDraftContestDTO.submissionEndsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_start_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_end_time: saveDraftContestDTO.submissionEndsAt.replace('T', ' ').replace('Z', ''),
+      duration: saveDraftContestDTO.submissionDuration,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
     })
 
-    await insertRecord(connection, 'project_phase', {
-      project_id: legacyId,
-      project_phase_id: data.registrationPhaseId,
-      phase_type_id: null,
-      phase_status_id: 'N/A',
-      actual_start_time: data.registrationStartsAt,
-      actual_end_time: data.registrationEndsAt
-    })
-
-    await insertRecord(connection, 'project_phase', {
-      project_id: legacyId,
-      project_phase_id: data.submissionPhaseId,
-      phase_type_id: null,
-      phase_status_id: 'N/A',
-      actual_start_time: data.registrationEndsAt,
-      actual_end_time: data.submissionEndsAt
-    })
-
-    if (data.checkpointSubmissionStartsAt && data.checkpointSubmissionEndsAt) {
+    if (saveDraftContestDTO.checkpointSubmissionStartsAt && saveDraftContestDTO.checkpointSubmissionEndsAt) {
       await insertRecord(connection, 'project_phase', {
         project_id: legacyId,
-        project_phase_id: data.checkpointSubmissionPhaseId,
-        phase_type_id: null,
-        phase_status_id: 'N/A',
-        actual_start_time: data.checkpointSubmissionStartsAt,
-        actual_end_time: data.checkpointSubmissionEndsAt
+        project_phase_id: await projectPhaseIdGen.getNextId(),
+        phase_type_id: 15,
+        phase_status_id: 2,
+        actual_start_time: saveDraftContestDTO.checkpointSubmissionStartsAt.replace('T', ' ').replace('Z', ''),
+        actual_end_time: saveDraftContestDTO.checkpointSubmissionEndsAt.replace('T', ' ').replace('Z', ''),
+        scheduled_start_time: saveDraftContestDTO.checkpointSubmissionStartsAt.replace('T', ' ').replace('Z', ''),
+        scheduled_end_time: saveDraftContestDTO.checkpointSubmissionEndsAt.replace('T', ' ').replace('Z', ''),
+        duration: saveDraftContestDTO.checkpointSubmissionDuration,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso,
       })
     }
 
-    await insertRecord(connection, 'project_status_lu', {
-      name: data.status,
-      project_status_id: constants.createChallengeStatusesMap[message.payload.status],
-    })
-
-    let fileTypeId = await fileTypeIdGen.getNextId()
-
-    await insertRecord(connection, 'file_type_lu', {
-      file_type_id: fileTypeId
-    })
-
-    await insertRecord(connection, 'project_file_type_xref', {
-      contest_id: legacyId,
-      project_id: legacyId,
-      file_type_id: fileTypeId,
-      description: 'N/A'
+    await insertRecord(connection, 'phase_criteria', {
+      project_phase_id: projectPhaseId,
+      phase_criteria_type_id: 1,
+      parameter: 'N/A',
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
     })
 
     await insertRecord(connection, 'contest', {
       contest_id: legacyId,
+      contest_type_id: 1,
+      contest_result_calculator_id: 1,
+      project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id
+    })
+
+    await insertRecord(connection, 'project_file_type_xref', {
+      project_id: legacyId,
+      file_type_id: 1
     })
 
     await insertRecord(connection, 'event', {
-      event_id: 'N/A',
+      event_id: legacyId,
       event_desc: 'N/A',
       event_short_desc: 'N/A'
     })
@@ -566,7 +569,6 @@ processCreate.schema = {
       name: Joi.string().required(),
       description: Joi.string().required(),
       privateDescription: Joi.string(),
-      status: Joi.string().required(),
       phases: Joi.array().items(Joi.object().keys({
         id: Joi.string().required(),
         name: Joi.string().required(),
@@ -669,7 +671,6 @@ processUpdate.schema = {
       name: Joi.string(),
       description: Joi.string(),
       privateDescription: Joi.string(),
-      status: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
         id: Joi.string().required(),
         name: Joi.string().required(),
