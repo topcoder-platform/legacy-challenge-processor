@@ -14,6 +14,7 @@ const converter = new showdown.Converter()
 
 const compCategoryIdGen = new IDGenerator('COMPCATEGORY_SEQ')
 const compVersionIdGen = new IDGenerator('COMPVERSION_SEQ')
+const compDocumentIdGen = new IDGenerator('COMPDOCUMENT_SEQ')
 const componentIdGen = new IDGenerator('COMPONENT_SEQ')
 const compVersionDatesIdGen = new IDGenerator('COMPVERSIONDATES_SEQ')
 const compTechIdGen = new IDGenerator('COMPTECH_SEQ')
@@ -336,6 +337,16 @@ async function processCreate (message) {
       phase_id: 112,
       phase_time: '1976-05-04 00:00:00', // dummy date value
       price: 0
+    })
+
+    const componentDocumentationId = await compVersionIdGen.getNextId()
+    console.log('Insert into comp_documentation', componentDocumentationId)
+    await insertRecord(connection, 'comp_documentation', {
+      document_id: componentDocumentationId,
+      comp_vers_id: componentVersionId,
+      document_type_id: 1,
+      document_name: "Component Specification",
+      url: 'components/doc_generation/Document_Generation_Requirements_Specification.pdf',
     })
 
     // insert record into comp_version_dates table, uses dummy date value
