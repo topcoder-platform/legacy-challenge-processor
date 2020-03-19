@@ -290,6 +290,7 @@ async function processCreate (message) {
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, connection)
+  console.log('Parsed Payload', saveDraftContestDTO)
   const track = message.payload.track
   const isStudio = constants.projectCategories[track].projectType === constants.projectTypes.Studio
   const category = getCategory(track, isStudio)
