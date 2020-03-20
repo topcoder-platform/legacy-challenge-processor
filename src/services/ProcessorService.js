@@ -339,7 +339,7 @@ async function processCreate (message) {
       price: 0
     })
 
-    const componentDocumentationId = await compVersionIdGen.getNextId()
+    const componentDocumentationId = await compDocumentIdGen.getNextId()
     console.log('Insert into comp_documentation', componentDocumentationId)
     await insertRecord(connection, 'comp_documentation', {
       document_id: componentDocumentationId,
