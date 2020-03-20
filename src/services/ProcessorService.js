@@ -287,10 +287,14 @@ function getCategory (track, isStudio) {
 async function processCreate (message) {
   console.log('Enter processCreate')
   // initialize informix database connection and m2m token
-  const connection = await helper.getInformixConnection()
+  const compTablesConnection = await helper.getInformixConnection()
+  const projectTablesConnection = await helper.getInformixConnection()
+  const miscTablesConnection = await helper.getInformixConnection()
+  
+
   const m2mToken = await helper.getM2MToken()
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, connection)
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, miscTablesConnection)
   console.log('Parsed Payload', saveDraftContestDTO)
   const track = message.payload.track
   const isStudio = constants.projectCategories[track].projectType === constants.projectTypes.Studio
@@ -299,14 +303,16 @@ async function processCreate (message) {
   console.log('processCreate :: beforeTry')
   try {
     // begin transaction
-    await connection.beginTransactionAsync()
+    await compTablesConnection.beginTransactionAsync()
+    await projectTablesConnection.beginTransactionAsync()
+    await miscTablesConnection.beginTransactionAsync()
 
     // generate component id
     const componentId = await componentIdGen.getNextId()
     console.log('processCreate :: componentId Generated', componentId)
 
     // insert record into comp_catalog table
-    await insertRecord(connection, 'comp_catalog', {
+    await insertRecord(compTablesConnection, 'comp_catalog', {
       component_id: componentId,
       current_version: 1,
       short_desc: 'NA',
@@ -318,7 +324,7 @@ async function processCreate (message) {
     })
     console.log('Insert into comp_categories')
     // insert record into comp_categories table
-    await insertRecord(connection, 'comp_categories', {
+    await insertRecord(compTablesConnection, 'comp_categories', {
       comp_categories_id: await compCategoryIdGen.getNextId(),
       component_id: componentId,
       category_id: category.category.id
@@ -329,7 +335,7 @@ async function processCreate (message) {
 
     // insert record into comp_versions table
     console.log('Insert into comp_versions', componentVersionId)
-    await insertRecord(connection, 'comp_versions', {
+    await insertRecord(compTablesConnection, 'comp_versions', {
       comp_vers_id: componentVersionId,
       component_id: componentId,
       version: 1,
@@ -341,7 +347,7 @@ async function processCreate (message) {
 
     const componentDocumentationId = await compDocumentIdGen.getNextId()
     console.log('Insert into comp_documentation', componentDocumentationId)
-    await insertRecord(connection, 'comp_documentation', {
+    await insertRecord(compTablesConnection, 'comp_documentation', {
       document_id: componentDocumentationId,
       comp_vers_id: componentVersionId,
       document_type_id: 1,
@@ -352,7 +358,7 @@ async function processCreate (message) {
     // insert record into comp_version_dates table, uses dummy date value
     const dummyDateValue = '2000-01-01'
     console.log('Insert into comp_version_dates', dummyDateValue)
-    await insertRecord(connection, 'comp_version_dates', {
+    await insertRecord(compTablesConnection, 'comp_version_dates', {
       comp_version_dates_id: await compVersionDatesIdGen.getNextId(),
       comp_vers_id: componentVersionId,
       phase_id: 112,
@@ -374,7 +380,7 @@ async function processCreate (message) {
       for (let tech of saveDraftContestDTO.technologies) {
         // insert record into comp_technology table
         console.log('Insert into comp_technology', tech.id)
-        await insertRecord(connection, 'comp_technology', {
+        await insertRecord(compTablesConnection, 'comp_technology', {
           comp_tech_id: await compTechIdGen.getNextId(),
           comp_vers_id: componentVersionId,
           technology_type_id: tech.id
@@ -402,7 +408,7 @@ async function processCreate (message) {
       project_sub_category_id: null
     }
     console.log('Inserting Project', newProj)
-    await insertRecord(connection, 'project', newProj)
+    await insertRecord(projectTablesConnection, 'project', newProj)
 
     const projectInfoArray = [
       {typeId: 1, value: componentVersionId, description: "External Reference ID" }, // i think this is the creator, but not sure
@@ -472,7 +478,7 @@ async function processCreate (message) {
           modify_date: currentDateIso,
         };
         // console.log('Insert into project_info', projInfo)
-        await insertRecord(connection, 'project_info', projInfo)
+        await insertRecord(projectTablesConnection, 'project_info', projInfo)
       }
     }
 
@@ -489,7 +495,7 @@ async function processCreate (message) {
       modify_date: currentDateIso
     }
     console.log('projectStudioRawObj', projectStudioRawObj)
-    await insertRecord(connection, 'project_studio_specification', projectStudioRawObj)
+    await insertRecord(projectTablesConnection, 'project_studio_specification', projectStudioRawObj)
 
     const projectSpecRawObj = {
       project_spec_id: legacyId,
@@ -504,10 +510,10 @@ async function processCreate (message) {
       modify_date: currentDateIso
     }
     console.log('projectSpecRawObj', projectSpecRawObj)
-    await insertRecord(connection, 'project_spec', projectSpecRawObj)
+    await insertRecord(projectTablesConnection, 'project_spec', projectSpecRawObj)
 
     console.log('project_mm_specification')
-    await insertRecord(connection, 'project_mm_specification', {
+    await insertRecord(projectTablesConnection, 'project_mm_specification', {
       project_mm_spec_id: legacyId,
       problem_id: 0,
       create_user: constants.processorUserId,
@@ -519,7 +525,7 @@ async function processCreate (message) {
     let projectPhaseId = await projectPhaseIdGen.getNextId()
 
     console.log('Insert into project_phase', projectPhaseId)
-    await insertRecord(connection, 'project_phase', {
+    await insertRecord(projectTablesConnection, 'project_phase', {
       project_id: legacyId,
       project_phase_id: projectPhaseId,
       phase_type_id: 1,
@@ -537,7 +543,7 @@ async function processCreate (message) {
 
     let newProjectPhaseId = await projectPhaseIdGen.getNextId();
     console.log('Insert into project_phase', projectPhaseId)
-    await insertRecord(connection, 'project_phase', {
+    await insertRecord(projectTablesConnection, 'project_phase', {
       project_id: legacyId,
       project_phase_id: newProjectPhaseId,
       phase_type_id: 2,
@@ -554,7 +560,7 @@ async function processCreate (message) {
     })
 
     if (saveDraftContestDTO.checkpointSubmissionStartsAt && saveDraftContestDTO.checkpointSubmissionEndsAt) {
-      await insertRecord(connection, 'project_phase', {
+      await insertRecord(projectTablesConnection, 'project_phase', {
         project_id: legacyId,
         project_phase_id: await projectPhaseIdGen.getNextId(),
         phase_type_id: 15,
@@ -572,7 +578,7 @@ async function processCreate (message) {
     }
 
     console.log('Insert into phase_criteria')
-    await insertRecord(connection, 'phase_criteria', {
+    await insertRecord(miscTablesConnection, 'phase_criteria', {
       project_phase_id: projectPhaseId,
       phase_criteria_type_id: 1,
       parameter: 'N/A',
@@ -583,7 +589,7 @@ async function processCreate (message) {
     })
 
     console.log('Insert into contest', legacyId)
-    await insertRecord(connection, 'contest', {
+    await insertRecord(miscTablesConnection, 'contest', {
       contest_id: legacyId,
       contest_type_id: 1,
       contest_result_calculator_id: 1,
@@ -591,13 +597,13 @@ async function processCreate (message) {
     })
 
     console.log('Insert into project_file_type_xref', legacyId)
-    await insertRecord(connection, 'project_file_type_xref', {
+    await insertRecord(miscTablesConnection, 'project_file_type_xref', {
       project_id: legacyId,
       file_type_id: 1
     })
 
     console.log('Insert into event', legacyId)
-    await insertRecord(connection, 'event', {
+    await insertRecord(miscTablesConnection, 'event', {
       event_id: legacyId,
       event_desc: 'N/A',
       event_short_desc: 'N/A'
@@ -610,7 +616,7 @@ async function processCreate (message) {
       prizeId = await prizeIdGen.getNextId()
       console.log('Insert into prize', prizeId)
 
-      await insertRecord(connection, 'prize', {
+      await insertRecord(miscTablesConnection, 'prize', {
         prize_id: prizeId,
         project_id: legacyId,
         place: i + 1,
@@ -627,7 +633,7 @@ async function processCreate (message) {
     // Create challenge checkpoint prize
     if (saveDraftContestDTO.numberOfCheckpointPrizes > 0) {
       console.log('Insert into checkpoint prizes')
-      await insertRecord(connection, 'prize', {
+      await insertRecord(miscTablesConnection, 'prize', {
         prize_id: await prizeIdGen.getNextId(),
         project_id: legacyId,
         place: 1,
@@ -648,7 +654,7 @@ async function processCreate (message) {
 
     // Get the list of user ids who have permissions on TC direct project to which the challenge is associated
     // These users should be added as obesrvers for the challenge
-    let observersIds = await getUserIdsWithTcDirectProjectPermissions(connection, saveDraftContestDTO.projectId)
+    let observersIds = await getUserIdsWithTcDirectProjectPermissions(miscTablesConnection, saveDraftContestDTO.projectId)
 
     // filter out the Callenge Copilot from the observers id array
     if (saveDraftContestDTO.copilotId) {
@@ -662,16 +668,22 @@ async function processCreate (message) {
     await Promise.all(promises)
 
     // commit the transaction
-    await connection.commitTransactionAsync()
+    await compTablesConnection.commitTransactionAsync()
+    await projectTablesConnection.commitTransactionAsync()
+    await miscTablesConnection.commitTransactionAsync()
     await helper.putRequest(`${config.V4_ES_FEEDER_API_URL}`, { param: { challengeIds: [legacyId] } },m2mToken)
     console.log('End of processCreate');
   } catch (e) {
     console.log('processCreate Catch', e);
-    await connection.rollbackTransactionAsync()
+    await compTablesConnection.rollbackTransactionAsync()
+    await projectTablesConnection.rollbackTransactionAsync()
+    await miscTablesConnection.rollbackTransactionAsync()
     throw e
   } finally {
     console.log('processCreate Finally');
-    await connection.closeAsync()
+    await compTablesConnection.closeAsync()
+    await projectTablesConnection.closeAsync()
+    await miscTablesConnection.closeAsync()
   }
 }
 
