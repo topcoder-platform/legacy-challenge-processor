@@ -464,22 +464,18 @@ async function processCreate (message) {
       // {typeId: 90, value: "2", description: "Estimate Efforts Days Onsite" },
     ];
 
-    for(let infoI = 0; infoI < projectInfoArray.length, infoI += 1;) {
-      const type = projectInfoArray[infoI];
-
-      if(type) {
-        const projInfo = {
-          project_id: legacyId,
-          project_info_type_id: type.typeId,
-          value: type.value,
-          create_user: constants.processorUserId,
-          create_date: currentDateIso,
-          modify_user: constants.processorUserId,
-          modify_date: currentDateIso,
-        };
-        // console.log('Insert into project_info', projInfo)
-        await insertRecord(projectTablesConnection, 'project_info', projInfo)
-      }
+    for(let type of projectInfoArray) {
+      const projInfo = {
+        project_id: legacyId,
+        project_info_type_id: type.typeId,
+        value: type.value,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso,
+      };
+      // console.log('Insert into project_info', projInfo)
+      await insertRecord(projectTablesConnection, 'project_info', projInfo)
     }
 
     console.log('Studio Statements');
