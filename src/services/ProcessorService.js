@@ -460,17 +460,20 @@ async function processCreate (message) {
 
     for(let infoI = 0; infoI < projectInfoArray.length, infoI += 1;) {
       const type = projectInfoArray[infoI];
-      const projInfo = {
-        project_id: legacyId,
-        project_info_type_id: type.typeId,
-        value: type.value,
-        create_user: constants.processorUserId,
-        create_date: currentDateIso,
-        modify_user: constants.processorUserId,
-        modify_date: currentDateIso,
-      };
-      console.log('Insert into project_info', projInfo)
-      await insertRecord(connection, 'project_info', projInfo)
+
+      if(type) {
+        const projInfo = {
+          project_id: legacyId,
+          project_info_type_id: type.typeId,
+          value: type.value,
+          create_user: constants.processorUserId,
+          create_date: currentDateIso,
+          modify_user: constants.processorUserId,
+          modify_date: currentDateIso,
+        };
+        console.log('Insert into project_info', projInfo)
+        await insertRecord(connection, 'project_info', projInfo)
+      }
     }
 
     // const projInfo = {
