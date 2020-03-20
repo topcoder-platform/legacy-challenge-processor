@@ -294,6 +294,7 @@ async function processCreate (message) {
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, connection)
   console.log('Parsed Payload', saveDraftContestDTO)
+  const challengeUuid = message.payload.id
   const track = message.payload.track
   const isStudio = constants.projectCategories[track].projectType === constants.projectTypes.Studio
   const category = getCategory(track, isStudio)
@@ -644,7 +645,7 @@ async function processCreate (message) {
     // commit the transaction
     await connection.commitTransactionAsync()
     await helper.putRequest(`${config.V4_ES_FEEDER_API_URL}`, { param: { challengeIds: [legacyId] } },m2mToken)
-    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}`, { legacyId }, m2mToken)
+    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, { legacyId }, m2mToken)
     console.log('End of processCreate');
   } catch (e) {
     console.log('processCreate Catch', e);
