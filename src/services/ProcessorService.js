@@ -404,29 +404,98 @@ async function processCreate (message) {
     console.log('Inserting Project', newProj)
     await insertRecord(connection, 'project', newProj)
 
-    const projInfo = {
-      project_id: legacyId,
-      project_info_type_id: saveDraftContestDTO.legacyTypeId,
-      value: componentId,
-      create_user: constants.processorUserId,
-      create_date: currentDateIso,
-      modify_user: constants.processorUserId,
-      modify_date: currentDateIso,
-    };
-    console.log('Insert into project_info', projInfo)
-    await insertRecord(connection, 'project_info', projInfo)
+    const projectInfoArray = [
+      {typeId: 1, value: constants.processorUserId, description: "External Reference ID" }, // i think this is the creator, but not sure
+      {typeId: 2, value: componentId, description: "Component ID" },
+      {typeId: 3, value: 1, description: "Version ID" },
+      {typeId: 4, value: saveDraftContestDTO.forumId, description: "Developer Forum ID" },
+      
+      {typeId: 5, value: "9926572", description: "Root Catalog ID" }, //what is this?
 
-    const projInfoVersion = {
-      project_id: legacyId,
-      project_info_type_id: 3, //hard coded to show the version
-      value: 1,
-      create_user: constants.processorUserId,
-      create_date: currentDateIso,
-      modify_user: constants.processorUserId,
-      modify_date: currentDateIso,
-    };
-    console.log('Insert Version into project_info', projInfoVersion)
-    await insertRecord(connection, 'project_info', projInfoVersion)
+      {typeId: 6, value: saveDraftContestDTO.name, description: "Project Name" },
+      {typeId: 7, value: "1", description: "Project Version" },
+
+      {typeId: 9, value: "On", description: "Autopilot Option" },
+      {typeId: 10, value: "On", description: "Status Notification" },
+      {typeId: 11, value: "On", description: "Timeline Notification" },
+      {typeId: 12, value: "Yes", description: "Public" },
+      {typeId: 13, value: "Yes", description: "Rated" },
+      {typeId: 14, value: "Open", description: "Eligibility" },
+      
+      {typeId: 16, value: "800", description: "Payments" }, //do we have to sum the prizes here?
+
+      {typeId: 17, value: "", description: "Notes" },
+      {typeId: 22, value: "03.22.2020 03:59 EDT", description: "Rated Timestamp" }, //what is this?
+      {typeId: 26, value: "Off", description: "Digital Run Flag" },
+      {typeId: 31, value: "1723.8", description: "Admin Fee" }, //where's this come from?
+      {typeId: 32, value: "80001157", description: "Billing Project" }, //do we have this? does it come from the project entry?
+      {typeId: 33, value: "528", description: "Review Cost" },
+
+      {typeId: 34, value: "standard_cca", description: "Confidentiality Type" },
+      {typeId: 35, value: "0", description: "Spec Review Cost" },
+      {typeId: 36, value: "800", description: "First Place Cost" },
+      {typeId: 37, value: "400", description: "Second Place Cost" },
+      {typeId: 38, value: "0", description: "Reliability Bonus Cost" },
+      {typeId: 39, value: "0", description: "Checkpoint Bonus Cost" },
+      {typeId: 40, value: "M", description: "Cost Level" },
+      {typeId: 41, value: "FALSE", description: "Approval Required" },
+      {typeId: 43, value: "TRUE", description: "Send Winner Emails" },
+      {typeId: 44, value: "TRUE", description: "Post-Mortem Required" },
+      {typeId: 45, value: "FALSE", description: "Reliability Bonus Eligible" },
+      {typeId: 46, value: "TRUE", description: "Member Payments Eligible" },
+      {typeId: 48, value: "TRUE", description: "Track Late Deliverables" },
+      {typeId: 49, value: "300", description: "Copilot Cost" }, // ??
+      {typeId: 52, value: "FALSE", description: "Allow Stock Art" },
+      {typeId: 53, value: "FALSE", description: "Viewable Submissions Flag" },
+      {typeId: 57, value: "0.85", description: "Contest Fee Percentage" },
+      {typeId: 58, value: "22713337", description: "Contest Launcher" }, // i think this is a user id?
+      {typeId: 59,	value: "FALSE", description: "Review Feedback Flag" },
+      {typeId: 61, value: "3751.8", description: "Historical Projected Cost" },
+      {typeId: 62, value: "03.18.2020 10:17 AM", description: "Project Activate Date" },
+      {typeId: 78, value: "Development", description: "Forum Type" },
+      {typeId: 79, value: "COMMUNITY", description: "Review Type" },
+      {typeId: 89, value: "3", description: "Estimate Efforts Days Offshore" },
+      {typeId: 90, value: "2", description: "Estimate Efforts Days Onsite" },
+    ];
+
+    for(let infoI = 0; infoI < projectInfoArray.length, infoI += 1;) {
+      const type = projectInfoArray[infoI];
+      const projInfo = {
+        project_id: legacyId,
+        project_info_type_id: type.typeId,
+        value: type.value,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso,
+      };
+      console.log('Insert into project_info', projInfo)
+      await insertRecord(connection, 'project_info', projInfo)
+    }
+
+    // const projInfo = {
+    //   project_id: legacyId,
+    //   project_info_type_id: saveDraftContestDTO.legacyTypeId,
+    //   value: componentId,
+    //   create_user: constants.processorUserId,
+    //   create_date: currentDateIso,
+    //   modify_user: constants.processorUserId,
+    //   modify_date: currentDateIso,
+    // };
+    // console.log('Insert into project_info', projInfo)
+    // await insertRecord(connection, 'project_info', projInfo)
+
+    // const projInfoVersion = {
+    //   project_id: legacyId,
+    //   project_info_type_id: 3, //hard coded to show the version
+    //   value: 1,
+    //   create_user: constants.processorUserId,
+    //   create_date: currentDateIso,
+    //   modify_user: constants.processorUserId,
+    //   modify_date: currentDateIso,
+    // };
+    // console.log('Insert Version into project_info', projInfoVersion)
+    // await insertRecord(connection, 'project_info', projInfoVersion)
 
     // The next 2 queries use inline prepared statement because all those contains 'TEXT' column which doesn't align well with ODBC
     const projectStudioRawStatement = "insert into project_studio_specification (project_studio_spec_id, contest_description_text, contest_introduction, round_one_introduction, round_two_introduction, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', 'N/A', 'N/A', 'N/A', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
