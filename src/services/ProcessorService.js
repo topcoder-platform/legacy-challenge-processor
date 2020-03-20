@@ -476,30 +476,6 @@ async function processCreate (message) {
       }
     }
 
-    // const projInfo = {
-    //   project_id: legacyId,
-    //   project_info_type_id: saveDraftContestDTO.legacyTypeId,
-    //   value: componentId,
-    //   create_user: constants.processorUserId,
-    //   create_date: currentDateIso,
-    //   modify_user: constants.processorUserId,
-    //   modify_date: currentDateIso,
-    // };
-    // console.log('Insert into project_info', projInfo)
-    // await insertRecord(connection, 'project_info', projInfo)
-
-    // const projInfoVersion = {
-    //   project_id: legacyId,
-    //   project_info_type_id: 3, //hard coded to show the version
-    //   value: 1,
-    //   create_user: constants.processorUserId,
-    //   create_date: currentDateIso,
-    //   modify_user: constants.processorUserId,
-    //   modify_date: currentDateIso,
-    // };
-    // console.log('Insert Version into project_info', projInfoVersion)
-    // await insertRecord(connection, 'project_info', projInfoVersion)
-
     // The next 2 queries use inline prepared statement because all those contains 'TEXT' column which doesn't align well with ODBC
     const projectStudioRawStatement = "insert into project_studio_specification (project_studio_spec_id, contest_description_text, contest_introduction, round_one_introduction, round_two_introduction, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', 'N/A', 'N/A', 'N/A', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
     const projectStudioStatement = await connection.prepare(projectStudioRawStatement);
@@ -668,9 +644,11 @@ async function processCreate (message) {
     await helper.putRequest(`${config.V4_ES_FEEDER_API_URL}`, { param: { challengeIds: [legacyId] } },m2mToken)
     console.log('End of processCreate');
   } catch (e) {
+    console.log('processCreate Catch', e);
     await connection.rollbackTransactionAsync()
     throw e
   } finally {
+    console.log('processCreate Finally');
     await connection.closeAsync()
   }
 }
