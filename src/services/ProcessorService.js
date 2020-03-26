@@ -370,7 +370,8 @@ async function processCreate (message) {
       review_complete_date: dummyDateValue,
       winner_announced_date: dummyDateValue,
       final_submission_date: dummyDateValue,
-      production_date: saveDraftContestDTO.registrationStartsAt.slice(0, 10) // convert ISO format to informix date format
+      production_date: saveDraftContestDTO.registrationStartsAt.slice(0, 10), // convert ISO format to informix date format
+      price: 0
     })
 
     if (!_.includes(['MARATHON_MATCH', 'CONCEPTUALIZATION', 'SPECIFICATION'], track) && !isStudio && saveDraftContestDTO.technologies) {
