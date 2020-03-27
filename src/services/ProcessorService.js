@@ -401,8 +401,8 @@ async function processCreate (message) {
       modify_user: constants.processorUserId,
       modify_date: currentDateIso,
       tc_direct_project_id: saveDraftContestDTO.projectId,
-      project_studio_spec_id: null, // 'N/A'
-      project_mm_spec_id: null, // 'N/A'
+      project_studio_spec_id: null, // null
+      project_mm_spec_id: null, // null
       project_sub_category_id: null
     }
     console.log('Inserting Project', newProj)
@@ -478,12 +478,12 @@ async function processCreate (message) {
 
     console.log('Studio Statements');
     // The next 2 queries use inline prepared statement because all those contains 'TEXT' column which doesn't align well with ODBC
-    const projectStudioRawStatement = "insert into project_studio_specification (project_studio_spec_id, contest_description_text, contest_introduction, round_one_introduction, round_two_introduction, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', 'N/A', 'N/A', 'N/A', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
+    const projectStudioRawStatement = "insert into project_studio_specification (project_studio_spec_id, contest_description_text, contest_introduction, round_one_introduction, round_two_introduction, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', null, null, null, '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
     console.log('projectStudioRawStatement', projectStudioRawStatement)
     const projectStudioStatement = await connection.prepare(projectStudioRawStatement);
     await projectStudioStatement.execute()
 
-    const projectSpecRawStatement = "insert into project_spec (project_spec_id, project_id, detailed_requirements_text, private_description_text, final_submission_guidelines_text, version, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", " + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', '" + (saveDraftContestDTO.privateDescription || 'N/A') + "', 'N/A', '" + 0 + "', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
+    const projectSpecRawStatement = "insert into project_spec (project_spec_id, project_id, detailed_requirements_text, private_description_text, final_submission_guidelines_text, version, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", " + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', '" + (saveDraftContestDTO.privateDescription || null) + "', null, '" + 0 + "', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
     console.log('projectSpecRawStatement', projectSpecRawStatement)
     const projectSpecStatement = await connection.prepare(projectSpecRawStatement);
     await projectSpecStatement.execute()
@@ -557,7 +557,7 @@ async function processCreate (message) {
     await insertRecord(connection, 'phase_criteria', {
       project_phase_id: projectPhaseId,
       phase_criteria_type_id: 1,
-      parameter: 'N/A',
+      parameter: null,
       create_user: constants.processorUserId,
       create_date: currentDateIso,
       modify_user: constants.processorUserId,
@@ -581,8 +581,8 @@ async function processCreate (message) {
     console.log('Insert into event', legacyId)
     await insertRecord(connection, 'event', {
       event_id: legacyId,
-      event_desc: 'N/A',
-      event_short_desc: 'N/A'
+      event_desc: null,
+      event_short_desc: null
     })
 
     let prizeId
