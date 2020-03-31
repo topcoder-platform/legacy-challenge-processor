@@ -32,19 +32,20 @@ module.exports = {
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET || '',
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
+  V4_ES_FEEDER_API_URL: process.env.V4_ES_FEEDER_API_URL || 'https://api.topcoder-dev.com/v4/esfeeder/challenges',
   V5_CHALLENGE_API_URL: process.env.V5_CHALLENGE_API_URL || 'http://localhost:4000/v5/challenges',
   V5_CHALLENGE_TYPE_API_URL: process.env.V5_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v5/challengeTypes',
 
   // informix database configuration
   INFORMIX: {
-    SERVER: process.env.IFX_SERVER || 'informixoltp_tcp', // informix server
-    DATABASE: process.env.IFX_DATABASE || 'tcs_catalog', // informix database
+    SERVER: process.env.INFORMIX_SERVER || 'informixoltp_tcp', // informix server
+    DATABASE: process.env.INFORMIX_DATABASE || 'tcs_catalog', // informix database
     HOST: process.env.INFORMIX_HOST || 'localhost', // host
-    PROTOCOL: process.env.IFX_PROTOCOL || 'onsoctcp',
-    PORT: process.env.IFX_PORT || '2021', // port
-    DB_LOCALE: process.env.IFX_DB_LOCALE || 'en_US.57372',
-    USER: process.env.IFX_USER || 'informix', // user
-    PASSWORD: process.env.IFX_PASSWORD || '1nf0rm1x', // password
-    POOL_MAX_SIZE: parseInt(process.env.IFX_POOL_MAX_SIZE) || 10 // use connection pool in processor, the pool size
+    PROTOCOL: process.env.INFORMIX_PROTOCOL || 'onsoctcp',
+    PORT: process.env.INFORMIX_PORT || '2021', // port
+    DB_LOCALE: process.env.INFORMIX_DB_LOCALE || 'en_US.57372',
+    USER: process.env.INFORMIX_USER || 'informix', // user
+    PASSWORD: process.env.INFORMIX_PASSWORD || '1nf0rm1x', // password
+    POOL_MAX_SIZE: parseInt(process.env.INFORMIX_POOL_MAX_SIZE) || 10 // use connection pool in processor, the pool size
   }
 }

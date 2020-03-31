@@ -14,10 +14,12 @@ const converter = new showdown.Converter()
 
 const compCategoryIdGen = new IDGenerator('COMPCATEGORY_SEQ')
 const compVersionIdGen = new IDGenerator('COMPVERSION_SEQ')
+const compDocumentIdGen = new IDGenerator('COMPDOCUMENT_SEQ')
 const componentIdGen = new IDGenerator('COMPONENT_SEQ')
 const compVersionDatesIdGen = new IDGenerator('COMPVERSIONDATES_SEQ')
 const compTechIdGen = new IDGenerator('COMPTECH_SEQ')
 const projectIdGen = new IDGenerator('project_id_seq')
+const projectPhaseIdGen = new IDGenerator('project_phase_id_seq')
 const prizeIdGen = new IDGenerator('prize_id_seq')
 
 /**
@@ -164,7 +166,10 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
       reviewType: payload.reviewType,
       projectId: payload.projectId,
       forumId: payload.forumId,
-      copilotId: payload.copilotId
+      status: payload.status
+    }
+    if (payload.copilotId) {
+      data.copilotId = payload.copilotId
     }
     if (isCreated) {
       // hard code some required properties for v4 api
@@ -176,25 +181,41 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
       data.track = typeRes.body.name
+      data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
-      data.detailedRequirements = payload.markdown ? converter.makeHtml(payload.description) : payload.description
+      try {
+        data.detailedRequirements = converter.makeHtml(payload.description)
+      } catch (e) {
+        data.detailedRequirements = payload.description
+      }
+    }
+    if (payload.privateDescription) {
+      try {
+        data.privateDescription = converter.makeHtml(payload.privateDescription)
+      } catch (e) {
+        data.privateDescription = payload.privateDescription
+      }
     }
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.registration)
       const submissionPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.submission)
       data.registrationStartsAt = new Date().toISOString()
       data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
+      data.registrationDuration = registrationPhase.duration
       data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
+      data.submissionDuration = submissionPhase.duration
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.checkpoint)
       if (checkpointPhase) {
         data.checkpointSubmissionStartsAt = new Date().toISOString()
         data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
+        data.checkpointSubmissionDuration = checkpointPhase.duration
       } else {
         data.checkpointSubmissionStartsAt = null
         data.checkpointSubmissionEndsAt = null
+        data.checkpointSubmissionDuration = null
       }
     }
     if (payload.prizeSets) {
@@ -230,6 +251,8 @@ async function parsePayload (payload, m2mToken, connection, isCreated = true) {
     }
     return data
   } catch (err) {
+    // Debugging
+    logger.debug(err)
     if (err.status) {
       // extract error message from V5 API
       const message = _.get(err, 'response.body.message')
@@ -262,21 +285,28 @@ function getCategory (track, isStudio) {
  * @param {Object} message the kafka message
  */
 async function processCreate (message) {
+  console.log('Enter processCreate')
   // initialize informix database connection and m2m token
   const connection = await helper.getInformixConnection()
+  
+
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, connection)
+  console.log('Parsed Payload', saveDraftContestDTO)
+  const challengeUuid = message.payload.id
   const track = message.payload.track
   const isStudio = constants.projectCategories[track].projectType === constants.projectTypes.Studio
   const category = getCategory(track, isStudio)
 
+  console.log('processCreate :: beforeTry')
   try {
     // begin transaction
     await connection.beginTransactionAsync()
 
     // generate component id
     const componentId = await componentIdGen.getNextId()
+    console.log('processCreate :: componentId Generated', componentId)
 
     // insert record into comp_catalog table
     await insertRecord(connection, 'comp_catalog', {
@@ -289,7 +319,7 @@ async function processCreate (message) {
       status_id: 102,
       root_category_id: category.rootCategory.id
     })
-
+    console.log('Insert into comp_categories')
     // insert record into comp_categories table
     await insertRecord(connection, 'comp_categories', {
       comp_categories_id: await compCategoryIdGen.getNextId(),
@@ -301,6 +331,7 @@ async function processCreate (message) {
     const componentVersionId = await compVersionIdGen.getNextId()
 
     // insert record into comp_versions table
+    console.log('Insert into comp_versions', componentVersionId)
     await insertRecord(connection, 'comp_versions', {
       comp_vers_id: componentVersionId,
       component_id: componentId,
@@ -311,8 +342,19 @@ async function processCreate (message) {
       price: 0
     })
 
+    const componentDocumentationId = await compDocumentIdGen.getNextId()
+    console.log('Insert into comp_documentation', componentDocumentationId)
+    await insertRecord(connection, 'comp_documentation', {
+      document_id: componentDocumentationId,
+      comp_vers_id: componentVersionId,
+      document_type_id: 1,
+      document_name: "Component Specification",
+      url: 'components/doc_generation/Document_Generation_Requirements_Specification.pdf',
+    })
+
     // insert record into comp_version_dates table, uses dummy date value
     const dummyDateValue = '2000-01-01'
+    console.log('Insert into comp_version_dates', dummyDateValue)
     await insertRecord(connection, 'comp_version_dates', {
       comp_version_dates_id: await compVersionDatesIdGen.getNextId(),
       comp_vers_id: componentVersionId,
@@ -328,12 +370,14 @@ async function processCreate (message) {
       review_complete_date: dummyDateValue,
       winner_announced_date: dummyDateValue,
       final_submission_date: dummyDateValue,
-      production_date: saveDraftContestDTO.registrationStartsAt.slice(0, 10) // convert ISO format to informix date format
+      production_date: saveDraftContestDTO.registrationStartsAt.slice(0, 10), // convert ISO format to informix date format
+      price: 0
     })
 
     if (!_.includes(['MARATHON_MATCH', 'CONCEPTUALIZATION', 'SPECIFICATION'], track) && !isStudio && saveDraftContestDTO.technologies) {
       for (let tech of saveDraftContestDTO.technologies) {
         // insert record into comp_technology table
+        console.log('Insert into comp_technology', tech.id)
         await insertRecord(connection, 'comp_technology', {
           comp_tech_id: await compTechIdGen.getNextId(),
           comp_vers_id: componentVersionId,
@@ -344,10 +388,11 @@ async function processCreate (message) {
 
     // Get the challenge legacy id ( The id in tcs_catalog:project table)
     const legacyId = await projectIdGen.getNextId()
-    const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '')
+    const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '').split('.')[0]
 
     // Create the Challenge record in tcs_catalog:project table
-    await insertRecord(connection, 'project', {
+    console.log('Insert into project', legacyId)
+    const newProj = {
       project_id: legacyId,
       project_status_id: constants.createChallengeStatusesMap[message.payload.status],
       project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id,
@@ -355,7 +400,189 @@ async function processCreate (message) {
       create_date: currentDateIso,
       modify_user: constants.processorUserId,
       modify_date: currentDateIso,
-      tc_direct_project_id: saveDraftContestDTO.projectId
+      tc_direct_project_id: saveDraftContestDTO.projectId,
+      project_studio_spec_id: null, // null
+      project_mm_spec_id: null, // null
+      project_sub_category_id: null
+    }
+    console.log('Inserting Project', newProj)
+    await insertRecord(connection, 'project', newProj)
+
+    const projectInfoArray = [
+      {typeId: 1, value: componentVersionId, description: "External Reference ID" }, // i think this is the creator, but not sure
+      {typeId: 2, value: componentId, description: "Component ID" },
+      {typeId: 3, value: 1, description: "Version ID" },
+      {typeId: 4, value: saveDraftContestDTO.forumId, description: "Developer Forum ID" },
+      
+      {typeId: 5, value: "9926572", description: "Root Catalog ID" }, //what is this?
+
+      {typeId: 6, value: saveDraftContestDTO.name, description: "Project Name" },
+      {typeId: 7, value: "1", description: "Project Version" },
+
+      {typeId: 9, value: "On", description: "Autopilot Option" },
+      {typeId: 10, value: "On", description: "Status Notification" },
+      {typeId: 11, value: "On", description: "Timeline Notification" },
+      {typeId: 12, value: "Yes", description: "Public" },
+      {typeId: 13, value: "Yes", description: "Rated" },
+      {typeId: 14, value: "Open", description: "Eligibility" },
+      
+      {typeId: 16, value: "800", description: "Payments" }, //do we have to sum the prizes here?
+
+      {typeId: 17, value: "", description: "Notes" },
+      {typeId: 22, value: "03.22.2020 03:59 EDT", description: "Rated Timestamp" }, //what is this?
+      {typeId: 26, value: "Off", description: "Digital Run Flag" },
+      {typeId: 31, value: "1723.8", description: "Admin Fee" }, //where's this come from?
+      {typeId: 32, value: "80001157", description: "Billing Project" }, //do we have this? does it come from the project entry?
+      {typeId: 33, value: "528", description: "Review Cost" },
+
+      {typeId: 34, value: "standard_cca", description: "Confidentiality Type" },
+      {typeId: 35, value: "0", description: "Spec Review Cost" },
+      {typeId: 36, value: "800", description: "First Place Cost" },
+      {typeId: 37, value: "400", description: "Second Place Cost" },
+      {typeId: 38, value: "0", description: "Reliability Bonus Cost" },
+      {typeId: 39, value: "0", description: "Checkpoint Bonus Cost" },
+      {typeId: 40, value: "M", description: "Cost Level" },
+      {typeId: 41, value: "FALSE", description: "Approval Required" },
+      {typeId: 43, value: "TRUE", description: "Send Winner Emails" },
+      {typeId: 44, value: "TRUE", description: "Post-Mortem Required" },
+      {typeId: 45, value: "FALSE", description: "Reliability Bonus Eligible" },
+      {typeId: 46, value: "TRUE", description: "Member Payments Eligible" },
+      {typeId: 48, value: "TRUE", description: "Track Late Deliverables" },
+      {typeId: 49, value: "300", description: "Copilot Cost" }, // ??
+      {typeId: 52, value: "FALSE", description: "Allow Stock Art" },
+      {typeId: 53, value: "FALSE", description: "Viewable Submissions Flag" },
+      {typeId: 57, value: "0.85", description: "Contest Fee Percentage" },
+      {typeId: 58, value: "22713337", description: "Contest Launcher" }, // i think this is a user id?
+      {typeId: 59,	value: "FALSE", description: "Review Feedback Flag" },
+      {typeId: 61, value: "3751.8", description: "Historical Projected Cost" },
+      {typeId: 62, value: "03.18.2020 10:17 AM", description: "Project Activate Date" },
+      {typeId: 78, value: "Development", description: "Forum Type" },
+      {typeId: 79, value: "COMMUNITY", description: "Review Type" },
+      {typeId: 89, value: "3", description: "Estimate Efforts Days Offshore" },
+      {typeId: 90, value: "2", description: "Estimate Efforts Days Onsite" },
+    ];
+
+    for(let type of projectInfoArray) {
+      const projInfo = {
+        project_id: legacyId,
+        project_info_type_id: type.typeId,
+        value: type.value,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso,
+      };
+      // console.log('Insert into project_info', projInfo)
+      await insertRecord(connection, 'project_info', projInfo)
+    }
+
+    console.log('Studio Statements');
+    // The next 2 queries use inline prepared statement because all those contains 'TEXT' column which doesn't align well with ODBC
+    const projectStudioRawStatement = "insert into project_studio_specification (project_studio_spec_id, contest_description_text, contest_introduction, round_one_introduction, round_two_introduction, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', null, null, null, '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
+    console.log('projectStudioRawStatement', projectStudioRawStatement)
+    const projectStudioStatement = await connection.prepare(projectStudioRawStatement);
+    await projectStudioStatement.execute()
+
+    const projectSpecRawStatement = "insert into project_spec (project_spec_id, project_id, detailed_requirements_text, private_description_text, final_submission_guidelines_text, version, create_user, create_date, modify_user, modify_date) values (" + legacyId + ", " + legacyId + ", '" + saveDraftContestDTO.detailedRequirements + "', '" + (saveDraftContestDTO.privateDescription || null) + "', null, '" + 0 + "', '" + constants.processorUserId + "', '" + currentDateIso + "', '" + constants.processorUserId + "', '" + currentDateIso + "')"
+    console.log('projectSpecRawStatement', projectSpecRawStatement)
+    const projectSpecStatement = await connection.prepare(projectSpecRawStatement);
+    await projectSpecStatement.execute()
+
+    console.log('project_mm_specification')
+    await insertRecord(connection, 'project_mm_specification', {
+      project_mm_spec_id: legacyId,
+      problem_id: 0,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
+    })
+
+    let projectPhaseId = await projectPhaseIdGen.getNextId()
+
+    console.log('Insert into project_phase', projectPhaseId)
+    await insertRecord(connection, 'project_phase', {
+      project_id: legacyId,
+      project_phase_id: projectPhaseId,
+      phase_type_id: 1,
+      phase_status_id: 2,
+      actual_start_time: saveDraftContestDTO.registrationStartsAt.replace('T', ' ').replace('Z', ''),
+      actual_end_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_start_time: saveDraftContestDTO.registrationStartsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_end_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      duration: saveDraftContestDTO.registrationDuration,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
+    })
+
+    let newProjectPhaseId = await projectPhaseIdGen.getNextId();
+    console.log('Insert into project_phase', projectPhaseId)
+    await insertRecord(connection, 'project_phase', {
+      project_id: legacyId,
+      project_phase_id: newProjectPhaseId,
+      phase_type_id: 2,
+      phase_status_id: 2,
+      actual_start_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      actual_end_time: saveDraftContestDTO.submissionEndsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_start_time: saveDraftContestDTO.registrationEndsAt.replace('T', ' ').replace('Z', ''),
+      scheduled_end_time: saveDraftContestDTO.submissionEndsAt.replace('T', ' ').replace('Z', ''),
+      duration: saveDraftContestDTO.submissionDuration,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
+    })
+
+    if (saveDraftContestDTO.checkpointSubmissionStartsAt && saveDraftContestDTO.checkpointSubmissionEndsAt) {
+      await insertRecord(connection, 'project_phase', {
+        project_id: legacyId,
+        project_phase_id: await projectPhaseIdGen.getNextId(),
+        phase_type_id: 15,
+        phase_status_id: 2,
+        actual_start_time: saveDraftContestDTO.checkpointSubmissionStartsAt.replace('T', ' ').replace('Z', ''),
+        actual_end_time: saveDraftContestDTO.checkpointSubmissionEndsAt.replace('T', ' ').replace('Z', ''),
+        scheduled_start_time: saveDraftContestDTO.checkpointSubmissionStartsAt.replace('T', ' ').replace('Z', ''),
+        scheduled_end_time: saveDraftContestDTO.checkpointSubmissionEndsAt.replace('T', ' ').replace('Z', ''),
+        duration: saveDraftContestDTO.checkpointSubmissionDuration,
+        create_user: constants.processorUserId,
+        create_date: currentDateIso,
+        modify_user: constants.processorUserId,
+        modify_date: currentDateIso,
+      })
+    }
+
+    console.log('Insert into phase_criteria')
+    await insertRecord(connection, 'phase_criteria', {
+      project_phase_id: projectPhaseId,
+      phase_criteria_type_id: 1,
+      parameter: null,
+      create_user: constants.processorUserId,
+      create_date: currentDateIso,
+      modify_user: constants.processorUserId,
+      modify_date: currentDateIso,
+    })
+
+    console.log('Insert into contest', legacyId)
+    await insertRecord(connection, 'contest', {
+      contest_id: legacyId,
+      contest_type_id: 1,
+      contest_result_calculator_id: 1,
+      project_category_id: constants.projectCategories[saveDraftContestDTO.subTrack].id
+    })
+
+    console.log('Insert into project_file_type_xref', legacyId)
+    await insertRecord(connection, 'project_file_type_xref', {
+      project_id: legacyId,
+      file_type_id: 1
+    })
+
+    console.log('Insert into event', legacyId)
+    await insertRecord(connection, 'event', {
+      event_id: legacyId,
+      event_desc: null,
+      event_short_desc: null
     })
 
     let prizeId
@@ -363,6 +590,7 @@ async function processCreate (message) {
     // Create the challenge contest prizes
     _.each(saveDraftContestDTO.prizes, async (prize, i) => {
       prizeId = await prizeIdGen.getNextId()
+      console.log('Insert into prize', prizeId)
 
       await insertRecord(connection, 'prize', {
         prize_id: prizeId,
@@ -380,6 +608,7 @@ async function processCreate (message) {
 
     // Create challenge checkpoint prize
     if (saveDraftContestDTO.numberOfCheckpointPrizes > 0) {
+      console.log('Insert into checkpoint prizes')
       await insertRecord(connection, 'prize', {
         prize_id: await prizeIdGen.getNextId(),
         project_id: legacyId,
@@ -395,14 +624,18 @@ async function processCreate (message) {
     }
 
     // Post the bus event for adding the Copilot resource
-    await _postCreateResourceBusEvent(message.payload.id, config.COPILOT_ROLE_UUID, saveDraftContestDTO.copilotId)
+    if (saveDraftContestDTO.copilotId) {
+      await _postCreateResourceBusEvent(message.payload.id, config.COPILOT_ROLE_UUID, saveDraftContestDTO.copilotId)
+    }
 
     // Get the list of user ids who have permissions on TC direct project to which the challenge is associated
     // These users should be added as obesrvers for the challenge
     let observersIds = await getUserIdsWithTcDirectProjectPermissions(connection, saveDraftContestDTO.projectId)
 
     // filter out the Callenge Copilot from the observers id array
-    observersIds = observersIds.filter((id) => id !== Number(saveDraftContestDTO.copilotId))
+    if (saveDraftContestDTO.copilotId) {
+      observersIds = observersIds.filter((id) => id !== Number(saveDraftContestDTO.copilotId))
+    }
 
     // Post the events for adding the observers to the challenge
     const promises = observersIds.map(observerId => {
@@ -412,10 +645,15 @@ async function processCreate (message) {
 
     // commit the transaction
     await connection.commitTransactionAsync()
+    await helper.putRequest(`${config.V4_ES_FEEDER_API_URL}`, { param: { challengeIds: [legacyId] } }, m2mToken)
+    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, { legacyId }, m2mToken)
+    console.log('End of processCreate');
   } catch (e) {
+    console.log('processCreate Catch', e);
     await connection.rollbackTransactionAsync()
     throw e
   } finally {
+    console.log('processCreate Finally');
     await connection.closeAsync()
   }
 }
@@ -432,7 +670,9 @@ processCreate.schema = {
       track: Joi.string().required(),
       name: Joi.string().required(),
       description: Joi.string().required(),
+      privateDescription: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
+        id: Joi.string().required(),
         name: Joi.string().required(),
         duration: Joi.number().positive().required()
       }).unknown(true)).min(1).required(),
@@ -443,11 +683,10 @@ processCreate.schema = {
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1).required(),
       reviewType: Joi.string().required(),
-      markdown: Joi.boolean().required(),
       tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
       projectId: Joi.number().integer().positive().required(),
       forumId: Joi.number().integer().positive().required(),
-      copilotId: Joi.number().integer().positive().required(),
+      copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
     }).unknown(true).required()
   }).required()
@@ -533,7 +772,9 @@ processUpdate.schema = {
       track: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
+      privateDescription: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
+        id: Joi.string().required(),
         name: Joi.string().required(),
         duration: Joi.number().positive().required()
       }).unknown(true)).min(1),
@@ -544,7 +785,6 @@ processUpdate.schema = {
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1),
       reviewType: Joi.string(),
-      markdown: Joi.boolean(),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
       projectId: Joi.number().integer().positive(),
       forumId: Joi.number().integer().positive()

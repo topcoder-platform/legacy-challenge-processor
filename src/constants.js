@@ -3,10 +3,8 @@
  */
 
 const prizeSetTypes = {
-  Code: 'Code',
-  F2F: 'First to Finish',
-  CheckPoint: 'Check Point',
-  MM: 'Marathon'
+  ChallengePrizes: 'Challenge prizes',
+  CheckPoint: 'Check Point'
 }
 
 const phaseTypes = {
