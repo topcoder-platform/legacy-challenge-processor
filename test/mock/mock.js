@@ -34,6 +34,7 @@ const mockApi = http.createServer((req, res) => {
       body += chunk.toString() // convert Buffer to string
     })
     req.on('end', () => {
+      logger.info('Create challenge entity in legacy system, the legacy id is 30055016')
       logger.debug(body)
       return send(res, 200, response.challenge)
     })
@@ -47,11 +48,23 @@ const mockApi = http.createServer((req, res) => {
       })
       req.on('end', () => {
         logger.debug(body)
-        res.end()
+        send(res, 200, response.challenge)
       })
     } else {
       return send(res, 404, { result: { status: 404, content: `No challenge can be found by the challenge id ${challengeId}` } })
     }
+  } else if (req.method === 'GET' && req.url.match(/^\/v4\/challenges\/.+$/)) {
+    const list = req.url.split('/')
+    const challengeId = list[3]
+    if (challengeId === '30055016') {
+      return send(res, 200, response.challenge)
+    } else {
+      return send(res, 404, { result: { status: 404, content: `No challenge can be found by the challenge id ${challengeId}` } })
+    }
+  } else if (req.method === 'GET' && req.url.match(/^\/v4\/technologies$/)) { // Technologies response
+    return send(res, 200, response.technologies)
+  } else if (req.method === 'GET' && req.url.match(/^\/v4\/platforms$/)) { // Platforms response
+    return send(res, 200, response.platforms)
   } else {
     // 404 for other routes
     res.statusCode = 404

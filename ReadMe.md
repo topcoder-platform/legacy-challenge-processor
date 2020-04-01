@@ -1,6 +1,6 @@
 # Topcoder - Legacy Challenge Processor
 
-This microservice processes kafka events related to challenges and backfills data in Informix (legacy) DB.
+This microservice processes kafka events related to challenges and backfills data via V4 Challenge API.
 
 ### Development deployment status
 [![CircleCI](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/develop.svg?style=svg)](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/develop)
@@ -16,11 +16,10 @@ This microservice processes kafka events related to challenges and backfills dat
 - [Challenge API](https://github.com/topcoder-platform/challenge-api)
 
 ## Prerequisites
-- [NodeJS](https://nodejs.org/en/) (v8)
+- [NodeJS](https://nodejs.org/en/) (v12)
 - [Docker](https://www.docker.com/)
 - [Docker Compose](https://docs.docker.com/compose/)
 - [Kafka](https://kafka.apache.org/)
-- [Informix](https://www.ibm.com/in-en/products/informix)
 
 ## Configuration
 
@@ -38,10 +37,6 @@ The following parameters can be set in config files or in env variables:
 - KAFKA_ERROR_TOPIC: The kafka error topic.
 - CREATE_CHALLENGE_TOPIC: the create challenge Kafka message topic, default value is 'challenge.notification.create'
 - UPDATE_CHALLENGE_TOPIC: the update challenge Kafka message topic, default value is 'challenge.notification.update'
-- CREATE_CHALLENGE_RESOURCE_TOPIC : The kafka topic to which to write create challenge resources events, default value is 'challenge.action.resource.create' (This topic exists in https://lauscher.topcoder-dev.com/ and can be used for testing)
-- COPILOT_ROLE_UUID: The Copilot role UUID, default value is 'bac822d2-725d-4973-9714-360918a09bc0' ( the same value should be set for the corresponding configuration value in legacy-challenge-resource-processor at https://github.com/topcoder-platform/legacy-challenge-resource-processor/blob/develop/src/common/utils.js#L10)
-- OBSERVER_ROLE_UUID: The Observer role UUID, default value is 'bac822d2-725d-4973-9712-360918a09bc0' ( the same value should be set for the corresponding configuration value in legacy-challenge-resource-processor at https://github.com/topcoder-platform/legacy-challenge-resource-processor/blob/develop/src/common/utils.js#L10)
-- BUSAPI_URL: The event bus API URL
 - AUTH0_URL: Auth0 URL, used to get TC M2M token
 - AUTH0_AUDIENCE: Auth0 audience, used to get TC M2M token
 - TOKEN_CACHE_TIME: Auth0 token cache time, used to get TC M2M token
@@ -50,19 +45,18 @@ The following parameters can be set in config files or in env variables:
 - AUTH0_PROXY_SERVER_URL: Proxy Auth0 URL, used to get TC M2M token
 - V5_CHALLENGE_API_URL: v5 challenge api url, default value is 'http://localhost:4000/v5/challenges'
 - V5_CHALLENGE_TYPE_API_URL: v5 challenge type api url, default value is 'http://localhost:4000/v5/challengeTypes'
-- INFORMIX: Informix database configuration parameters, refer `config/default.js` for more information
+- V4_CHALLENGE_API_URL: v4 challenge api url, default value is 'http://localhost:4000/v4/challenges'
+- V4_TECHNOLOGIES_API_URL: v4 technologies api url, default value is 'http://localhost:4000/v4/technologies'
+- V4_PLATFORMS_API_URL: v4 platforms api url, default value is 'http://localhost:4000/v4/platforms'
 
 There is a `/health` endpoint that checks for the health of the app. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable
 
 Configuration for the tests is at `config/test.js`, only add such new configurations different from `config/default.js`
 - MOCK_API_PORT: the mock server port, default is 4000
 - WAIT_TIME: wait time used in test, default is 1500 or 1.5 second
-- V4_CHALLENGE_API_URL: the v4 challenge api url, used mock v4 challenge api in testing
-
 
 You can find sample `.env` files inside the `/docker` directory.
 
-## Local Deployment
 ###   Foreman Setup
  To install foreman follow this [link](https://theforeman.org/manuals/1.24/#3.InstallingForeman)
  To know how to use foreman follow this [link](https://theforeman.org/manuals/1.24/#2.Quickstart)
@@ -91,43 +85,68 @@ You can find sample `.env` files inside the `/docker` directory.
 - run the producer and then write some message into the console to send to the `challenge.notification.create` topic:
   `bin/kafka-console-producer.sh --broker-list localhost:9092 --topic challenge.notification.create`
   in the console, write message, one message per line:
-  `{ "topic": "challenge.notification.create", "originator": "challenge-api", "timestamp": "2019-05-14T00:00:00.000Z", "mime-type": "application/json", "payload": { "id": "1a4ef3a8-ed35-40d1-b8a6-7371a700d011", "typeId": "2f4ef3a8-ed35-40d1-b8a6-7371a700d098", "track": "CODE", "name": "test-for-legacy-challenge-processor", "description": "<p>test</p>", "phases": [{ "id": "id-1", "name": "registration", "isActive": true, "duration": 345600000 }, { "id": "id-2", "name": "submission", "isActive": true, "duration": 345600000 }, { "id": "id-3", "name": "checkpoint", "isActive": true, "duration": 172800000 } ], "prizeSets": [{ "type": "Code", "prizes": [{ "type": "first-place", "value": 1000 }, { "type": "second-place", "value": 500 }] }, { "type": "Check Point", "prizes": [{ "type": "first-place", "value": 200 }, { "type": "second-place", "value": 200 }, { "type": "third-place", "value": 200 }] }], "reviewType": "COMMUNITY", "markdown": false, "tags": ["Node.js", "NodeJS", "MongoDB", "AWS"], "projectId": 3000, "forumId": 33059 }, "copilotId": 124861, "status": "Active"}`
+  `{"topic":"challenge.notification.create","originator":"challenge-api","timestamp":"2019-05-14T00:00:00.000Z","mime-type":"application/json","payload":{"id":"0fe70d1a-ad3c-4c58-b341-a478145c4747","created":"2020-03-23T13:21:07.729Z","createdBy":"TopcoderService","typeId":"0b2ac310-eaf0-40e3-b66b-37e5e9e09365","track":"DEVELOPMENT","name":"Lets see if this will work 12","description":"test-description","timelineTemplateId":"a93544bc-c165-4af4-b55e-18f3593b457a","phases":[{"phaseId":"a93544bc-c165-4af4-b55e-18f3593b457a","duration":1000000,"id":"607e8f90-1ed6-49a3-b5a2-486b761a3def","name":"Registration","isOpen":false,"scheduledStartDate":"2020-03-14T16:28:39.882Z","scheduledEndDate":"2020-03-26T06:15:19.882Z","actualStartDate":"2020-03-14T16:28:39.882Z","actualEndDate":"2020-03-26T06:15:19.882Z"},{"phaseId":"6950164f-3c5e-4bdc-abc8-22aaf5a1bd49","duration":1000000,"id":"486fc45e-01e1-4a20-bda1-50cff82943db","name":"Submission","isOpen":false,"scheduledStartDate":"2020-03-14T16:28:39.882Z","scheduledEndDate":"2020-03-26T06:15:19.882Z","actualStartDate":"2020-03-14T16:28:39.882Z","actualEndDate":"2020-03-26T06:15:19.882Z"}],"prizeSets":[{"type":"Challenge prizes","description":"desc","prizes":[{"description":"desc-first","type":"first place","value":500},{"description":"desc-second","type":"second place","value":250}]}],"reviewType":"INTERNAL","tags":["Other"],"projectId":8913,"forumId":456,"status":"Draft","startDate":"2020-03-14T16:28:39.882Z","terms":[{"id":"0dedac8f-5a1a-4fe7-936f-e1d04dc65b7d","agreeabilityType":"Electronically-agreeable","title":"Terms & Conditions of Use at TopCoder","url":""}],"endDate":"2020-03-26T06:15:19.882Z","numOfSubmissions":0,"numOfRegistrants":0}}`
 - optionally, use another terminal, go to same directory, start a consumer to view the messages:
   `bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic challenge.notification.create --from-beginning`
 - writing/reading messages to/from other topics are similar
 
-### Topcoder Informix Database Setup
-We will use Topcoder Informix database setup on Docker.
-
-Go to `docker-ifx` folder and run `docker-compose up`
-After the database has initialized, You can use a database GUI tool(example [DBeaver](https://dbeaver.io)) to run the sql script `docker-ifx/update.sql`.
-
-**Dev Only Step, DO NOT EXECUTE IN PRODUCTION**
-For testing the creation of challenge resources, the users need to agree to user terms before adding them as resources, to achieve this : execute the sql script `docker-ifx/devOnly-Updates.sql` this will make all users in the database agree to all terms.
-Additionally the above script will do the following :
--- Create two Copilot profiles in the db for users : ksmith and wyzmo
--- Create a TC direct project with id = 3000
--- Assign both copilots (ksmith and wyzmo) to the TC direct project with project_full permissions
--- Add three users ('Hung', 'twight' and 'dok_tester') with project_report, project_read and project_write permissions respectively.
-
 ### Local deployment without Docker
-- Given the fact that the library used to access Informix DB depends on Informix Client SDK.
-We will run the application on Docker using a base image with Informix Client SDK installed and properly configured.
-For deployment, please refer to next section 'Local Deployment with Docker'
+
+Please make sure you installed and configured kafka
+
+Install all dependencies
+
+```
+npm install
+```
+
+Run the lint
+
+```
+npm run lint
+```
+
+Set environment variables for M2M Token
+
+```
+export AUTH0_CLIENT_ID=jGIf2pd3f44B1jqvOai30BIKTZanYBfU
+export AUTH0_CLIENT_SECRET=ldzqVaVEbqhwjM5KtZ79sG8djZpAVK8Z7qieVcC3vRjI4NirgcinKSBpPwk6mYYP
+```
+
+Mock server will be started by test tool during testing but for completing local setup please run mock server
+in a separate terminal after running tests. Shutdown mock-api for running tests.
+
+```
+npm run mock-api
+```
+
+Run the application
+
+```
+npm start
+```
+
+We will be using mock version of V4 and V5 APIs for local development and testing. You can also configure
+corresponding environment variables and point processor to topcoder-dev environment.
 
 ### Local Deployment with Docker
 
-1. Make sure that Kafka, mock server and Informix are running as per instructions above.
+1. Make sure that Kafka, mock server are running as per instructions above.
 
 2. Go to `docker` folder
 
-3. Rename the file `sample.api.env` to `api.env` And properly update the IP addresses to match your environment for the variables : KAFKA_URL, INFORMIX_HOST and V5_CHALLENGE_TYPE_API_URL( make sure to use IP address instead of hostname ( i.e localhost will not work)).Here is an example:
+3. Rename the file `sample.api.env` to `api.env` And properly update the IP addresses to match below environment for the variables ( make sure to use IP address instead of hostname ( i.e localhost will not work)).Here is an example:
+Please see that 192.168.1.3 is the IP of host machine for docker where we run all the dependencies
+
 ```
-KAFKA_URL=192.168.31.8:9092
-INFORMIX_HOST=192.168.31.8
-V5_CHALLENGE_TYPE_API_URL=http://192.168.31.8:4000/v5/challengeTypes
-AUTH0_CLIENT_ID=8QovDh27SrDu1XSs68m21A1NBP8isvOt
-AUTH0_CLIENT_SECRET=3QVxxu20QnagdH-McWhVz0WfsQzA1F8taDdGDI4XphgpEYZPcMTF4lX3aeOIeCzh
+KAFKA_URL=192.168.1.3:9092
+V5_CHALLENGE_API_URL=http://192.168.1.3:4000/v5/challenges
+V5_CHALLENGE_TYPE_API_URL=http://192.168.1.3:4000/v5/challengeTypes
+V4_CHALLENGE_API_URL=http://192.168.1.3:4000/v4/challenges
+V4_TECHNOLOGIES_API_URL=http://192.168.1.3:4000/v4/technologies
+V4_PLATFORMS_API_URL=http://192.168.1.3:4000/v4/platforms
+AUTH0_CLIENT_ID=jGIf2pd3f44B1jqvOai30BIKTZanYBfU
+AUTH0_CLIENT_SECRET=ldzqVaVEbqhwjM5KtZ79sG8djZpAVK8Z7qieVcC3vRjI4NirgcinKSBpPwk6mYYP
 AUTH0_URL=https://topcoder-dev.auth0.com/oauth/token
 AUTH0_AUDIENCE=https://m2m.topcoder-dev.com/
 ```
@@ -141,7 +160,6 @@ docker-compose up
 5. When you are running the application for the first time, It will take some time initially to download the image and install the dependencies
 
 
-
 ## Production Deployment
 
 - TBD
@@ -153,9 +171,15 @@ docker-compose up
 Test configuration is at `config/test.js`. You don't need to change them.
 The following test parameters can be set in config file or in env variables:
 
-- MOCK_API_PORT: port of mock api
+- MOCK_API_PORT: port of mock api (Default value conflicts with mock api server. So, please shutdown mock api before running tests)
 - WAIT_TIME: wait time used in test, default is 1000 or one second
-- V4_CHALLENGE_API_URL: url of challenge api v4
+
+Set environment variables for M2M Token
+
+```
+export AUTH0_CLIENT_ID=jGIf2pd3f44B1jqvOai30BIKTZanYBfU
+export AUTH0_CLIENT_SECRET=ldzqVaVEbqhwjM5KtZ79sG8djZpAVK8Z7qieVcC3vRjI4NirgcinKSBpPwk6mYYP
+```
 
 ### Prepare
 - Start Local services.
@@ -182,5 +206,10 @@ npm run e2e
 Refer to the verification document `Verification.md`
 
 ## Notes
-In constants.js, 'processorUserId' is set to 132456 which is the id of the user 'heffan'. It used to populated auditing fields for the created records (create_user and modify_user).
-In Production, a dedicated user should be created for the legacy-challenge-processor and this value should be properly updated in constants.js.
+
+Application is configured to use local mock APs for development and you can point application
+to topcoder dev environment for verification purposes. But, please be aware that you need to use correct
+kafka message values for verification.
+
+There are some critical issues in dependencies which come from Topcoder and no-kafka libraries. We use latest
+versions as of now but these issues should be addressed.
