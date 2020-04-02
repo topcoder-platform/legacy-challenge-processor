@@ -169,7 +169,7 @@ async function processCreate (message) {
 
   logger.debug('processCreate :: beforeTry')
   try {
-    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: saveDraftContestDTO })
+    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: saveDraftContestDTO }, m2mToken)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, { legacyId: newChallenge.body.result.content.id }, m2mToken)
     logger.debug('End of processCreate')
   } catch (e) {
