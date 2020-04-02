@@ -54,7 +54,7 @@ async function getChallengeById (m2mToken, legacyId) {
 async function parsePayload (payload, m2mToken, isCreated = true) {
   try {
     const data = {
-      subTrack: payload.track,
+      track: payload.track, // FIXME: thomas
       name: payload.name,
       reviewType: payload.reviewType,
       projectId: payload.projectId,
@@ -73,7 +73,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     }
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
-      data.track = typeRes.body.name
+      data.subTrack = typeRes.body.name // FIXME: thomas
       data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
@@ -228,9 +228,9 @@ async function processUpdate (message) {
     if (message.payload.track) {
       const newTrack = message.payload.track
       // track information is stored in subTrack of V4 API
-      if (challenge.result.content.subTrack !== newTrack) {
+      if (challenge.result.content.track !== newTrack) {
         // refer ContestDirectManager.prepare in ap-challenge-microservice
-        throw new Error('You can\'t change challenge type')
+        throw new Error('You can\'t change challenge track')
       }
     }
 
