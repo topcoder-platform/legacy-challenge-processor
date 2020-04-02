@@ -58,8 +58,10 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       name: payload.name,
       reviewType: payload.reviewType,
       projectId: payload.projectId,
-      forumId: payload.forumId,
       status: payload.status
+    }
+    if (payload.forumId) {
+      data.forumId = payload.forumId
     }
     if (payload.copilotId) {
       data.copilotId = payload.copilotId
@@ -205,7 +207,7 @@ processCreate.schema = {
       reviewType: Joi.string().required(),
       tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
       projectId: Joi.number().integer().positive().required(),
-      forumId: Joi.number().integer().positive().required(),
+      forumId: Joi.number().integer().positive(),
       copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
     }).unknown(true).required()
