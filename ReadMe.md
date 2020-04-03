@@ -8,7 +8,6 @@ This microservice processes kafka events related to challenges and backfills dat
 [![CircleCI](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/master.svg?style=svg)](https://circleci.com/gh/topcoder-platform/legacy-challenge-processor/tree/master)
 
 ## Intended use
-
 - Processor
 
 ## Related repos
