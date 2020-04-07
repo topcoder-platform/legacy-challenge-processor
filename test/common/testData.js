@@ -1,5 +1,5 @@
 module.exports = {
-  requiredFields: ['payload.id', 'payload.typeId', 'payload.track', 'payload.name', 'payload.description', 'payload.phases', 'payload.prizeSets', 'payload.reviewType', 'payload.markdown', 'payload.tags', 'payload.projectId', 'payload.forumId'],
+  requiredFields: ['payload.id', 'payload.typeId', 'payload.track', 'payload.name', 'payload.description', 'payload.phases', 'payload.prizeSets', 'payload.reviewType', 'payload.tags', 'payload.projectId', 'payload.forumId'],
   stringFields: ['payload.typeId', 'payload.track', 'payload.name', 'payload.description', 'payload.reviewType'],
   integerFields: ['payload.projectId', 'payload.forumId'],
   arrayFields: ['payload.phases', 'payload.prizeSets'],
@@ -21,14 +21,15 @@ module.exports = {
           { id: 'id-3', name: 'checkpoint', isActive: true, duration: 172800000 }
         ],
         prizeSets: [
-          { type: 'Code', prizes: [{ type: 'first-place', value: 1000 }, { type: 'second-place', value: 500 }] },
+          { type: 'Challenge prizes', prizes: [{ type: 'first-place', value: 1000 }, { type: 'second-place', value: 500 }] },
           { type: 'Check Point', prizes: [{ type: 'first-place', value: 200 }, { type: 'second-place', value: 200 }, { type: 'third-place', value: 200 }] }
         ],
         reviewType: 'COMMUNITY',
         markdown: false,
         tags: ['Node.js', 'NodeJS', 'MongoDB', 'AWS'],
         projectId: 5087,
-        forumId: 33059
+        forumId: 33059,
+        status: 'Draft'
       }
     },
     update: {
@@ -48,7 +49,7 @@ module.exports = {
           { id: 'id-2', name: 'submission', isActive: true, duration: 345600000 }
         ],
         prizeSets: [
-          { type: 'Code', prizes: [{ type: 'first-place', value: 800 }, { type: 'second-place', value: 400 }] }
+          { type: 'Challenge prizes', prizes: [{ type: 'first-place', value: 800 }, { type: 'second-place', value: 400 }] }
         ],
         reviewType: 'COMMUNITY',
         markdown: true,

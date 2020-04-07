@@ -38,7 +38,7 @@ builddeploy_steps: &builddeploy_steps
             source awsenvconf
             ./buildenv.sh -e $DEPLOY_ENV -b ${LOGICAL_ENV}-${APPNAME}-deployvar
             source buildenvvar
-            ./master_deploy.sh -d ECS -e $DEPLOY_ENV -t latest -s ${LOGICAL_ENV}-global-appvar,${LOGICAL_ENV}-global-informix-appvar,${LOGICAL_ENV}-${APPNAME}-appvar -i ${APPNAME}
+            ./master_deploy.sh -d ECS -e $DEPLOY_ENV -t latest -s ${LOGICAL_ENV}-global-appvar,${LOGICAL_ENV}-${APPNAME}-appvar -i ${APPNAME}
 
 
 jobs:
@@ -48,15 +48,15 @@ jobs:
     environment:
       DEPLOY_ENV: "DEV"
       LOGICAL_ENV: "dev"
-      APPNAME: "legacy-challenge-processor"    
+      APPNAME: "legacy-challenge-processor"
     steps: *builddeploy_steps
 
   "build-prod":
     <<: *defaults
     environment:
       DEPLOY_ENV: "PROD"
-      LOGICAL_ENV: "prod"    
-      APPNAME: "legacy-challenge-processor"  
+      LOGICAL_ENV: "prod"
+      APPNAME: "legacy-challenge-processor"
     steps: *builddeploy_steps
 
 workflows:
