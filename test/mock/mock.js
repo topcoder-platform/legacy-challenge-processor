@@ -10,7 +10,7 @@ const response = require('./response')
 
 const mockApi = http.createServer((req, res) => {
   logger.debug(`${req.method} ${req.url}`)
-  if (req.method === 'GET' && req.url.match(/^\/v5\/challengeTypes\/.+$/)) {
+  if (req.method === 'GET' && req.url.match(/^\/v5\/challenge-types\/.+$/)) {
     const list = req.url.split('/')
     const typeId = list[3]
     if (typeId === '1f4ef3a8-ed35-40d1-b8a6-7371a700d098') {
