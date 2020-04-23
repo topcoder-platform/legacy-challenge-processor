@@ -54,14 +54,14 @@ async function getChallengeById (m2mToken, legacyId) {
 async function parsePayload (payload, m2mToken, isCreated = true) {
   try {
     const data = {
-      track: payload.track, // FIXME: thomas
+      track: payload.legacy.track, // FIXME: thomas
       name: payload.name,
-      reviewType: payload.reviewType,
+      reviewType: payload.legacy.reviewType,
       projectId: payload.projectId,
       status: payload.status
     }
-    if (payload.forumId) {
-      data.forumId = payload.forumId
+    if (payload.legacy.forumId) {
+      data.forumId = payload.legacy.forumId
     }
     if (payload.copilotId) {
       data.copilotId = payload.copilotId
@@ -189,7 +189,11 @@ processCreate.schema = {
     payload: Joi.object().keys({
       id: Joi.string().required(),
       typeId: Joi.string().required(),
-      track: Joi.string().required(),
+      legacy: Joi.object().keys({
+        track: Joi.string().required(),
+        reviewType: Joi.string().required(),
+        forumId: Joi.number().integer().positive()
+      }).required(),
       name: Joi.string().required(),
       description: Joi.string().required(),
       privateDescription: Joi.string(),
@@ -204,10 +208,8 @@ processCreate.schema = {
           value: Joi.number().positive().required()
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1).required(),
-      reviewType: Joi.string().required(),
       tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
       projectId: Joi.number().integer().positive().required(),
-      forumId: Joi.number().integer().positive(),
       copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
     }).unknown(true).required()
@@ -227,8 +229,8 @@ async function processUpdate (message) {
     // ensure challenge existed
     const challenge = await getChallengeById(m2mToken, message.payload.legacyId)
     // we can't switch the challenge type
-    if (message.payload.track) {
-      const newTrack = message.payload.track
+    if (message.payload.legacy.track) {
+      const newTrack = message.payload.legacy.track
       // track information is stored in subTrack of V4 API
       if (challenge.result.content.track !== newTrack) {
         // refer ContestDirectManager.prepare in ap-challenge-microservice
@@ -251,8 +253,12 @@ processUpdate.schema = {
     'mime-type': Joi.string().required(),
     payload: Joi.object().keys({
       legacyId: Joi.number().integer().positive().required(),
+      legacy: Joi.object().keys({
+        track: Joi.string().required(),
+        reviewType: Joi.string().required(),
+        forumId: Joi.number().integer().positive()
+      }).required(),
       typeId: Joi.string(),
-      track: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
       privateDescription: Joi.string(),
@@ -267,10 +273,8 @@ processUpdate.schema = {
           value: Joi.number().positive().required()
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1),
-      reviewType: Joi.string(),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
-      projectId: Joi.number().integer().positive(),
-      forumId: Joi.number().integer().positive()
+      projectId: Joi.number().integer().positive()
     }).unknown(true).required()
   }).required()
 }

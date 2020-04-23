@@ -12,7 +12,11 @@ module.exports = {
       payload: {
         id: '1a4ef3a8-ed35-40d1-b8a6-7371a700d011',
         typeId: '2f4ef3a8-ed35-40d1-b8a6-7371a700d098',
-        track: 'CODE',
+        legacy: {
+          track: 'CODE',
+          reviewType: 'COMMUNITY',
+          forumId: 33059
+        },
         name: 'test-for-legacy-challenge-processor',
         description: '<p>test</p>',
         phases: [
@@ -24,11 +28,9 @@ module.exports = {
           { type: 'Challenge prizes', prizes: [{ type: 'first-place', value: 1000 }, { type: 'second-place', value: 500 }] },
           { type: 'Check Point', prizes: [{ type: 'first-place', value: 200 }, { type: 'second-place', value: 200 }, { type: 'third-place', value: 200 }] }
         ],
-        reviewType: 'COMMUNITY',
         markdown: false,
         tags: ['Node.js', 'NodeJS', 'MongoDB', 'AWS'],
         projectId: 5087,
-        forumId: 33059,
         status: 'Draft'
       }
     },
