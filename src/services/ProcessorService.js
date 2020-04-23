@@ -45,6 +45,17 @@ async function getChallengeById (m2mToken, legacyId) {
 }
 
 /**
+ * Get Project from V5 API
+ * @param {String} m2mToken token for accessing the API
+ * @param {Number} projectId project id
+ * @returns {Object} project response body
+ */
+async function getDirectProjectId (m2mToken, projectId) {
+  const response = await helper.getRequest(`${config.V5_PROJECTS_API_URL}/${projectId}`, m2mToken)
+  return response.body
+}
+
+/**
  * Construct DTO from Kafka message payload.
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
@@ -53,14 +64,21 @@ async function getChallengeById (m2mToken, legacyId) {
  */
 async function parsePayload (payload, m2mToken, isCreated = true) {
   try {
+    let projectId
+    if (_.get(payload, 'legacy.projectId')) {
+      projectId = payload.legacy.projectId
+    } else {
+      projectId = _.get((await getDirectProjectId(payload.projectId)), 'directProjectId')
+      if (!projectId) throw new Error(`Could not find Direct Project ID for Project ${payload.projectId}`)
+    }
     const data = {
-      track: payload.legacy.track, // FIXME: thomas
+      track: _.get(payload, 'legacy.track'), // FIXME: thomas
       name: payload.name,
-      reviewType: payload.legacy.reviewType,
-      projectId: payload.projectId,
+      reviewType: _.get(payload, 'legacy.reviewType'),
+      projectId,
       status: payload.status
     }
-    if (payload.legacy.forumId) {
+    if (_.get(payload, 'legacy.forumId')) {
       data.forumId = payload.legacy.forumId
     }
     if (payload.copilotId) {
@@ -68,7 +86,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     }
     if (isCreated) {
       // hard code some required properties for v4 api
-      data.confidentialityType = 'public'
+      data.confidentialityType = _.get(payload, 'legacy.confidentialityType', 'public')
       data.submissionGuidelines = 'Please read above'
       data.submissionVisibility = true
       data.milestoneId = 1
@@ -172,7 +190,13 @@ async function processCreate (message) {
   logger.debug('processCreate :: beforeTry')
   try {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: saveDraftContestDTO }, m2mToken)
-    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, { legacyId: newChallenge.body.result.content.id }, m2mToken)
+    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
+      legacy: {
+        ...message.payload.legacy,
+        directProjectId: newChallenge.body.result.content.projectId
+      },
+      legacyId: newChallenge.body.result.content.id
+    }, m2mToken)
     logger.debug('End of processCreate')
   } catch (e) {
     logger.error('processCreate Catch', e)
@@ -192,6 +216,8 @@ processCreate.schema = {
       legacy: Joi.object().keys({
         track: Joi.string().required(),
         reviewType: Joi.string().required(),
+        confidentialityType: Joi.string(),
+        directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
       }).required(),
       name: Joi.string().required(),
@@ -256,6 +282,8 @@ processUpdate.schema = {
       legacy: Joi.object().keys({
         track: Joi.string().required(),
         reviewType: Joi.string().required(),
+        confidentialityType: Joi.string(),
+        directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
       }).required(),
       typeId: Joi.string(),
@@ -274,7 +302,7 @@ processUpdate.schema = {
         }).unknown(true)).min(1).required()
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
-      projectId: Joi.number().integer().positive()
+      projectId: Joi.number().integer().positive().allow(null)
     }).unknown(true).required()
   }).required()
 }
