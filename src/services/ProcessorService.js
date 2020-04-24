@@ -68,7 +68,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     if (_.get(payload, 'legacy.projectId')) {
       projectId = payload.legacy.projectId
     } else {
-      projectId = _.get((await getDirectProjectId(payload.projectId)), 'directProjectId')
+      projectId = _.get((await getDirectProjectId(m2mToken, payload.projectId)), 'directProjectId')
       if (!projectId) throw new Error(`Could not find Direct Project ID for Project ${payload.projectId}`)
     }
     const data = {
