@@ -93,7 +93,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     }
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
-      data.subTrack = typeRes.body.name // FIXME: thomas
+      data.subTrack = typeRes.body.abbreviation // FIXME: thomas
       data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
