@@ -193,7 +193,9 @@ async function processCreate (message) {
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
-        directProjectId: newChallenge.body.result.content.projectId
+        directProjectId: newChallenge.body.result.content.projectId,
+        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId),
+        informixModified: _.get(newChallenge, 'body.result.content.updatedAt', new Date())
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
