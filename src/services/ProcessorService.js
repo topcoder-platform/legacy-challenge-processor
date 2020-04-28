@@ -293,7 +293,8 @@ processUpdate.schema = {
         reviewType: Joi.string().required(),
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
-        forumId: Joi.number().integer().positive()
+        forumId: Joi.number().integer().positive(),
+        informixModified: Joi.string()
       }).required(),
       typeId: Joi.string(),
       name: Joi.string(),
