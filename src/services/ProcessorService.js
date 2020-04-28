@@ -181,6 +181,10 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
  * @param {Object} message the kafka message
  */
 async function processCreate (message) {
+  if (message.payload.status === constants.challengeStatuses.New) {
+    logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
+    return
+  }
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
@@ -249,6 +253,9 @@ processCreate.schema = {
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
+  if (!message.payload.legacyId && message.payload.status !== constants.challengeStatuses.New) {
+    return processCreate(message)
+  }
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false)
@@ -280,7 +287,7 @@ processUpdate.schema = {
     timestamp: Joi.date().required(),
     'mime-type': Joi.string().required(),
     payload: Joi.object().keys({
-      legacyId: Joi.number().integer().positive().required(),
+      legacyId: Joi.number().integer().positive(),
       legacy: Joi.object().keys({
         track: Joi.string().required(),
         reviewType: Joi.string().required(),

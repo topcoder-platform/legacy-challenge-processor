@@ -22,10 +22,19 @@ const createChallengeStatusesMap = {
   Draft: 2
 }
 
+const challengeStatuses = {
+  New: 'New',
+  Draft: 'Draft',
+  Canceled: 'Canceled',
+  Active: 'Active',
+  Completed: 'Completed'
+}
+
 module.exports = {
   prizeSetTypes,
   phaseTypes,
   EVENT_ORIGINATOR,
   EVENT_MIME_TYPE,
-  createChallengeStatusesMap
+  createChallengeStatusesMap,
+  challengeStatuses
 }
