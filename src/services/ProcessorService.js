@@ -253,7 +253,11 @@ processCreate.schema = {
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
-  if (!message.payload.legacyId && message.payload.status !== constants.challengeStatuses.New) {
+  if (message.payload.status === constants.challengeStatuses.New) {
+    logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
+    return
+  } else if (!message.payload.legacyId) {
+    logger.debug('Legacy ID does not exist. Will create...')
     return processCreate(message)
   }
   const m2mToken = await helper.getM2MToken()
@@ -295,7 +299,7 @@ processUpdate.schema = {
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive(),
         informixModified: Joi.string()
-      }).required(),
+      }),
       typeId: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
@@ -304,12 +308,12 @@ processUpdate.schema = {
         id: Joi.string().required(),
         name: Joi.string().required(),
         duration: Joi.number().positive().required()
-      }).unknown(true)).min(1),
+      }).unknown(true)),
       prizeSets: Joi.array().items(Joi.object().keys({
         type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
         prizes: Joi.array().items(Joi.object().keys({
           value: Joi.number().positive().required()
-        }).unknown(true)).min(1).required()
+        }).unknown(true))
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
       projectId: Joi.number().integer().positive().allow(null)
