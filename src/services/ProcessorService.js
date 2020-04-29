@@ -40,7 +40,7 @@ async function getPlatforms (m2mToken) {
  * @returns {Object} challenge response body
  */
 async function getChallengeById (m2mToken, legacyId) {
-  const response = await helper.getRequest(`${config.V4_CHALLENGE_API_URL}?filter=id=${legacyId}`, m2mToken)
+  const response = await helper.getRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, m2mToken)
   return _.get(response, 'body.result.content[0]')
 }
 
@@ -270,14 +270,15 @@ async function processUpdate (message) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
     // we can't switch the challenge type
-    if (message.payload.legacy.track) {
-      const newTrack = message.payload.legacy.track
-      // track information is stored in subTrack of V4 API
-      if (challenge.track !== newTrack) {
-        // refer ContestDirectManager.prepare in ap-challenge-microservice
-        throw new Error('You can\'t change challenge track')
-      }
-    }
+    // TODO: track is missing from the response.
+    // if (message.payload.legacy.track) {
+    //   const newTrack = message.payload.legacy.track
+    //   // track information is stored in subTrack of V4 API
+    //   if (challenge.track !== newTrack) {
+    //     // refer ContestDirectManager.prepare in ap-challenge-microservice
+    //     throw new Error('You can\'t change challenge track')
+    //   }
+    // }
 
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
   } catch (e) {
