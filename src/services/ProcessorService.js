@@ -280,7 +280,7 @@ async function processUpdate (message) {
       }
     }
 
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO })
+    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
