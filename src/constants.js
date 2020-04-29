@@ -19,7 +19,8 @@ const EVENT_MIME_TYPE = 'application/json'
 
 const createChallengeStatusesMap = {
   Active: 1,
-  Draft: 2
+  Draft: 2,
+  New: 2
 }
 
 const challengeStatuses = {
