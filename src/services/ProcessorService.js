@@ -111,8 +111,8 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       }
     }
     if (payload.phases) {
-      const registrationPhase = _.find(payload.phases, p => p.id === config.REGISTRATION_PHASE_ID)
-      const submissionPhase = _.find(payload.phases, p => p.id === config.SUBMISSION_PHASE_ID)
+      const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
+      const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
       data.registrationStartsAt = new Date().toISOString()
       data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
       data.registrationDuration = registrationPhase.duration
@@ -120,7 +120,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.submissionDuration = submissionPhase.duration
 
       // Only Design can have checkpoint phase and checkpoint prizes
-      const checkpointPhase = _.find(payload.phases, p => p.id === config.CHECKPOINT_SUBMISSION_PHASE_ID)
+      const checkpointPhase = _.find(payload.phases, p => p.phaseId === config.CHECKPOINT_SUBMISSION_PHASE_ID)
       if (checkpointPhase) {
         data.checkpointSubmissionStartsAt = new Date().toISOString()
         data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
