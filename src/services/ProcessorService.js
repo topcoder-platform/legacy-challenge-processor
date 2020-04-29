@@ -218,29 +218,29 @@ processCreate.schema = {
     'mime-type': Joi.string().required(),
     payload: Joi.object().keys({
       id: Joi.string().required(),
-      typeId: Joi.string().required(),
+      typeId: Joi.string(),
       legacy: Joi.object().keys({
         track: Joi.string().required(),
         reviewType: Joi.string().required(),
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
-      }).required(),
+      }),
       name: Joi.string().required(),
-      description: Joi.string().required(),
+      description: Joi.string(),
       privateDescription: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
         id: Joi.string().required(),
         name: Joi.string().required(),
         duration: Joi.number().positive().required()
-      }).unknown(true)).min(1).required(),
+      }).unknown(true)),
       prizeSets: Joi.array().items(Joi.object().keys({
         type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
         prizes: Joi.array().items(Joi.object().keys({
           value: Joi.number().positive().required()
         }).unknown(true)).min(1).required()
-      }).unknown(true)).min(1).required(),
-      tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
+      }).unknown(true)),
+      tags: Joi.array().items(Joi.string().required()), // tag names
       projectId: Joi.number().integer().positive().required(),
       copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
