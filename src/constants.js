@@ -7,12 +7,6 @@ const prizeSetTypes = {
   CheckPoint: 'Check Point'
 }
 
-const phaseTypes = {
-  registration: 'registration',
-  submission: 'submission',
-  checkpoint: 'checkpoint'
-}
-
 const EVENT_ORIGINATOR = 'legacy-challenge-processor'
 
 const EVENT_MIME_TYPE = 'application/json'
@@ -33,7 +27,6 @@ const challengeStatuses = {
 
 module.exports = {
   prizeSetTypes,
-  phaseTypes,
   EVENT_ORIGINATOR,
   EVENT_MIME_TYPE,
   createChallengeStatusesMap,
