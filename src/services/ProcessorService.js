@@ -41,6 +41,17 @@ async function getPlatforms (m2mToken) {
  */
 async function getChallengeById (m2mToken, legacyId) {
   const response = await helper.getRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, m2mToken)
+  return _.get(response, 'body.result.content[0]')
+}
+
+/**
+ * Get Project from V5 API
+ * @param {String} m2mToken token for accessing the API
+ * @param {Number} projectId project id
+ * @returns {Object} project response body
+ */
+async function getDirectProjectId (m2mToken, projectId) {
+  const response = await helper.getRequest(`${config.V5_PROJECTS_API_URL}/${projectId}`, m2mToken)
   return response.body
 }
 
@@ -53,29 +64,36 @@ async function getChallengeById (m2mToken, legacyId) {
  */
 async function parsePayload (payload, m2mToken, isCreated = true) {
   try {
+    let projectId
+    if (_.get(payload, 'legacy.directProjectId')) {
+      projectId = payload.legacy.directProjectId
+    } else {
+      projectId = _.get((await getDirectProjectId(m2mToken, payload.projectId)), 'directProjectId')
+      if (!projectId) throw new Error(`Could not find Direct Project ID for Project ${payload.projectId}`)
+    }
     const data = {
-      track: payload.track, // FIXME: thomas
+      track: _.get(payload, 'legacy.track'), // FIXME: thomas
       name: payload.name,
-      reviewType: payload.reviewType,
-      projectId: payload.projectId,
+      reviewType: _.get(payload, 'legacy.reviewType'),
+      projectId,
       status: payload.status
     }
-    if (payload.forumId) {
-      data.forumId = payload.forumId
+    if (_.get(payload, 'legacy.forumId')) {
+      data.forumId = payload.legacy.forumId
     }
     if (payload.copilotId) {
       data.copilotId = payload.copilotId
     }
     if (isCreated) {
       // hard code some required properties for v4 api
-      data.confidentialityType = 'public'
+      data.confidentialityType = _.get(payload, 'legacy.confidentialityType', 'public')
       data.submissionGuidelines = 'Please read above'
       data.submissionVisibility = true
       data.milestoneId = 1
     }
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
-      data.subTrack = typeRes.body.name // FIXME: thomas
+      data.subTrack = typeRes.body.abbreviation // FIXME: thomas
       data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
@@ -93,8 +111,8 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       }
     }
     if (payload.phases) {
-      const registrationPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.registration)
-      const submissionPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.submission)
+      const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
+      const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
       data.registrationStartsAt = new Date().toISOString()
       data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
       data.registrationDuration = registrationPhase.duration
@@ -102,7 +120,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.submissionDuration = submissionPhase.duration
 
       // Only Design can have checkpoint phase and checkpoint prizes
-      const checkpointPhase = _.find(payload.phases, p => p.name.toLowerCase() === constants.phaseTypes.checkpoint)
+      const checkpointPhase = _.find(payload.phases, p => p.phaseId === config.CHECKPOINT_SUBMISSION_PHASE_ID)
       if (checkpointPhase) {
         data.checkpointSubmissionStartsAt = new Date().toISOString()
         data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
@@ -163,6 +181,10 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
  * @param {Object} message the kafka message
  */
 async function processCreate (message) {
+  if (message.payload.status === constants.challengeStatuses.New) {
+    logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
+    return
+  }
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
@@ -172,7 +194,15 @@ async function processCreate (message) {
   logger.debug('processCreate :: beforeTry')
   try {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: saveDraftContestDTO }, m2mToken)
-    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, { legacyId: newChallenge.body.result.content.id }, m2mToken)
+    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
+      legacy: {
+        ...message.payload.legacy,
+        directProjectId: newChallenge.body.result.content.projectId,
+        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId),
+        informixModified: _.get(newChallenge, 'body.result.content.updatedAt', new Date())
+      },
+      legacyId: newChallenge.body.result.content.id
+    }, m2mToken)
     logger.debug('End of processCreate')
   } catch (e) {
     logger.error('processCreate Catch', e)
@@ -188,26 +218,29 @@ processCreate.schema = {
     'mime-type': Joi.string().required(),
     payload: Joi.object().keys({
       id: Joi.string().required(),
-      typeId: Joi.string().required(),
-      track: Joi.string().required(),
+      typeId: Joi.string(),
+      legacy: Joi.object().keys({
+        track: Joi.string().required(),
+        reviewType: Joi.string().required(),
+        confidentialityType: Joi.string(),
+        directProjectId: Joi.number(),
+        forumId: Joi.number().integer().positive()
+      }),
       name: Joi.string().required(),
-      description: Joi.string().required(),
+      description: Joi.string(),
       privateDescription: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
         id: Joi.string().required(),
-        name: Joi.string().required(),
         duration: Joi.number().positive().required()
-      }).unknown(true)).min(1).required(),
+      }).unknown(true)),
       prizeSets: Joi.array().items(Joi.object().keys({
         type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
         prizes: Joi.array().items(Joi.object().keys({
           value: Joi.number().positive().required()
         }).unknown(true)).min(1).required()
-      }).unknown(true)).min(1).required(),
-      reviewType: Joi.string().required(),
-      tags: Joi.array().items(Joi.string().required()).min(1).required(), // tag names
+      }).unknown(true)),
+      tags: Joi.array().items(Joi.string().required()), // tag names
       projectId: Joi.number().integer().positive().required(),
-      forumId: Joi.number().integer().positive(),
       copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
     }).unknown(true).required()
@@ -219,6 +252,13 @@ processCreate.schema = {
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
+  if (message.payload.status === constants.challengeStatuses.New) {
+    logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
+    return
+  } else if (!message.payload.legacyId) {
+    logger.debug('Legacy ID does not exist. Will create...')
+    return processCreate(message)
+  }
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false)
@@ -226,17 +266,21 @@ async function processUpdate (message) {
   try {
     // ensure challenge existed
     const challenge = await getChallengeById(m2mToken, message.payload.legacyId)
-    // we can't switch the challenge type
-    if (message.payload.track) {
-      const newTrack = message.payload.track
-      // track information is stored in subTrack of V4 API
-      if (challenge.result.content.track !== newTrack) {
-        // refer ContestDirectManager.prepare in ap-challenge-microservice
-        throw new Error('You can\'t change challenge track')
-      }
+    if (!challenge) {
+      throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
+    // we can't switch the challenge type
+    // TODO: track is missing from the response.
+    // if (message.payload.legacy.track) {
+    //   const newTrack = message.payload.legacy.track
+    //   // track information is stored in subTrack of V4 API
+    //   if (challenge.track !== newTrack) {
+    //     // refer ContestDirectManager.prepare in ap-challenge-microservice
+    //     throw new Error('You can\'t change challenge track')
+    //   }
+    // }
 
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO })
+    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
@@ -250,27 +294,31 @@ processUpdate.schema = {
     timestamp: Joi.date().required(),
     'mime-type': Joi.string().required(),
     payload: Joi.object().keys({
-      legacyId: Joi.number().integer().positive().required(),
+      legacyId: Joi.number().integer().positive(),
+      legacy: Joi.object().keys({
+        track: Joi.string().required(),
+        reviewType: Joi.string().required(),
+        confidentialityType: Joi.string(),
+        directProjectId: Joi.number(),
+        forumId: Joi.number().integer().positive(),
+        informixModified: Joi.string()
+      }),
       typeId: Joi.string(),
-      track: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
       privateDescription: Joi.string(),
       phases: Joi.array().items(Joi.object().keys({
         id: Joi.string().required(),
-        name: Joi.string().required(),
         duration: Joi.number().positive().required()
-      }).unknown(true)).min(1),
+      }).unknown(true)),
       prizeSets: Joi.array().items(Joi.object().keys({
         type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
         prizes: Joi.array().items(Joi.object().keys({
           value: Joi.number().positive().required()
-        }).unknown(true)).min(1).required()
+        }).unknown(true))
       }).unknown(true)).min(1),
-      reviewType: Joi.string(),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
-      projectId: Joi.number().integer().positive(),
-      forumId: Joi.number().integer().positive()
+      projectId: Joi.number().integer().positive().allow(null)
     }).unknown(true).required()
   }).required()
 }
