@@ -177,6 +177,25 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
 }
 
 /**
+ * Activate challenge
+ * @param {Number} challengeId the challenge ID
+ */
+async function activateChallenge (challengeId) {
+  const m2mToken = await helper.getM2MToken()
+  return helper.postRequest(`${config.V4_CHALLENGE_API_URL}/${challengeId}/activate`, null, m2mToken)
+}
+
+/**
+ * Close challenge
+ * @param {Number} challengeId the challenge ID
+ * @param {Number} winnerId the winner ID
+ */
+async function closeChallenge (challengeId, winnerId) {
+  const m2mToken = await helper.getM2MToken()
+  return helper.postRequest(`${config.V4_CHALLENGE_API_URL}/${challengeId}/close?winnerId=${winnerId}`, null, m2mToken)
+}
+
+/**
  * Process create challenge message
  * @param {Object} message the kafka message
  */
@@ -268,6 +287,22 @@ async function processUpdate (message) {
     const challenge = await getChallengeById(m2mToken, message.payload.legacyId)
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
+    }
+    if (message.payload.status) {
+      if (message.payload.status === constants.challengeStatuses.Active && challenge.status !== constants.challengeStatuses.Active) {
+        await activateChallenge(message.payload.legacyId)
+      }
+      if (message.payload.status === constants.challengeStatuses.Completed && challenge.status !== constants.challengeStatuses.Completed) {
+        const challengeUuid = message.payload.id
+        const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
+        if (v5Challenge.typeId === config.TASK_TYPE_ID) {
+          if (!message.payload.winners || message.payload.winners.length === 0) {
+            throw new Error('Cannot close challenge without winners')
+          }
+          const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
+          await closeChallenge(message.payload.legacyId, winnerId)
+        }
+      }
     }
     // we can't switch the challenge type
     // TODO: track is missing from the response.
