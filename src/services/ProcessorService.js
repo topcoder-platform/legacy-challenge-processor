@@ -143,8 +143,8 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
         data.checkpointPrize = 0
       }
 
-      // prize type can be Challenge prizes/Check Point
-      const challengePrizes = _.filter(payload.prizeSets, p => p.type !== constants.prizeSetTypes.CheckPoint)
+      // prize type can be Challenge prizes
+      const challengePrizes = _.filter(payload.prizeSets, p => p.type !== constants.prizeSetTypes.ChallengePrizes)
       if (challengePrizes.length > 1) {
         throw new Error('Challenge prize information is invalid.')
       }
