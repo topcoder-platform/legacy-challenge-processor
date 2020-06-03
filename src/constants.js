@@ -3,8 +3,10 @@
  */
 
 const prizeSetTypes = {
-  ChallengePrizes: 'Challenge prizes',
-  CheckPoint: 'Check Point'
+  ChallengePrizes: 'placement',
+  CopilotPayment: 'copilot',
+  ReviewerPayment: 'reviewer',
+  CheckPoint: 'checkpoint'
 }
 
 const EVENT_ORIGINATOR = 'legacy-challenge-processor'
