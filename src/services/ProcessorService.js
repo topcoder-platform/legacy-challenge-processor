@@ -41,7 +41,7 @@ async function getPlatforms (m2mToken) {
  */
 async function getChallengeById (m2mToken, legacyId) {
   const response = await helper.getRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, m2mToken)
-  return _.get(response, 'body.result.content[0]')
+  return _.get(response, 'body.result.content')
 }
 
 /**
