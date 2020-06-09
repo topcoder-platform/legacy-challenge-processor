@@ -76,8 +76,10 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       name: payload.name,
       reviewType: _.get(payload, 'legacy.reviewType'),
       projectId,
-      status: payload.status,
-      billingAccountId: payload.billingAccountId
+      status: payload.status
+    }
+    if (payload.billingAccountId) {
+      data.billingAccountId = payload.billingAccountId
     }
     if (_.get(payload, 'legacy.forumId')) {
       data.forumId = payload.legacy.forumId
