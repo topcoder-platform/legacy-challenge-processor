@@ -144,16 +144,11 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       }
 
       // prize type can be Challenge prizes
-      const challengePrizes = _.filter(payload.prizeSets, p => p.type !== constants.prizeSetTypes.ChallengePrizes)
-      if (challengePrizes.length > 1) {
+      const challengePrizes = _.find(payload.prizeSets, { type: constants.prizeSetTypes.ChallengePrizes })
+      if (!challengePrizes) {
         throw new Error('Challenge prize information is invalid.')
       }
-      if (challengePrizes.length === 0) {
-        // learning challenge has no prizes, for safeguard
-        data.prizes = [0]
-      } else {
-        data.prizes = _.map(challengePrizes[0].prizes, 'value').sort((a, b) => b - a)
-      }
+      data.prizes = _.map(challengePrizes[0].prizes, 'value').sort((a, b) => b - a)
     }
     if (payload.tags) {
       const techResult = await getTechnologies(m2mToken)
