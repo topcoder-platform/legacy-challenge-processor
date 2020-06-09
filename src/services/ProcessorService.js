@@ -76,7 +76,8 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       name: payload.name,
       reviewType: _.get(payload, 'legacy.reviewType'),
       projectId,
-      status: payload.status
+      status: payload.status,
+      billingAccountId: payload.billingAccountId
     }
     if (_.get(payload, 'legacy.forumId')) {
       data.forumId = payload.legacy.forumId
@@ -245,6 +246,7 @@ processCreate.schema = {
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
       }),
+      billingAccountId: Joi.number(),
       name: Joi.string().required(),
       description: Joi.string(),
       privateDescription: Joi.string(),
@@ -338,6 +340,7 @@ processUpdate.schema = {
         forumId: Joi.number().integer().positive(),
         informixModified: Joi.string()
       }),
+      billingAccountId: Joi.number(),
       typeId: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
