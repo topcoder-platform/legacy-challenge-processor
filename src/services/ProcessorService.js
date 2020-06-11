@@ -41,7 +41,7 @@ async function getPlatforms (m2mToken) {
  */
 async function getChallengeById (m2mToken, legacyId) {
   const response = await helper.getRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, m2mToken)
-  return _.get(response, 'body.result.content[0]')
+  return _.get(response, 'body.result.content')
 }
 
 /**
@@ -77,6 +77,9 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       reviewType: _.get(payload, 'legacy.reviewType'),
       projectId,
       status: payload.status
+    }
+    if (payload.billingAccountId) {
+      data.billingAccountId = payload.billingAccountId
     }
     if (_.get(payload, 'legacy.forumId')) {
       data.forumId = payload.legacy.forumId
@@ -144,16 +147,11 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       }
 
       // prize type can be Challenge prizes
-      const challengePrizes = _.filter(payload.prizeSets, p => p.type !== constants.prizeSetTypes.ChallengePrizes)
-      if (challengePrizes.length > 1) {
+      const challengePrizes = _.find(payload.prizeSets, { type: constants.prizeSetTypes.ChallengePrizes })
+      if (!challengePrizes) {
         throw new Error('Challenge prize information is invalid.')
       }
-      if (challengePrizes.length === 0) {
-        // learning challenge has no prizes, for safeguard
-        data.prizes = [0]
-      } else {
-        data.prizes = _.map(challengePrizes[0].prizes, 'value').sort((a, b) => b - a)
-      }
+      data.prizes = _.map(challengePrizes[0].prizes, 'value').sort((a, b) => b - a)
     }
     if (payload.tags) {
       const techResult = await getTechnologies(m2mToken)
@@ -245,6 +243,7 @@ processCreate.schema = {
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
       }),
+      billingAccountId: Joi.number(),
       name: Joi.string().required(),
       description: Joi.string(),
       privateDescription: Joi.string(),
@@ -338,6 +337,7 @@ processUpdate.schema = {
         forumId: Joi.number().integer().positive(),
         informixModified: Joi.string()
       }),
+      billingAccountId: Joi.number(),
       typeId: Joi.string(),
       name: Joi.string(),
       description: Joi.string(),
