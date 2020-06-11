@@ -305,6 +305,7 @@ async function processUpdate (message) {
             throw new Error('Cannot close challenge without winners')
           }
           const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
+          logger.info(`Will close the challenge with ID ${message.payload.legacyId}. Winner ${winnerId}!`)
           await closeChallenge(message.payload.legacyId, winnerId)
         }
       }
