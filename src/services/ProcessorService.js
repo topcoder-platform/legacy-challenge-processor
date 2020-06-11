@@ -287,6 +287,8 @@ async function processUpdate (message) {
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
+    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
+
     if (message.payload.status) {
       if (message.payload.status === constants.challengeStatuses.Active && challenge.status !== constants.challengeStatuses.Active) {
         await activateChallenge(message.payload.legacyId)
@@ -313,8 +315,6 @@ async function processUpdate (message) {
     //     throw new Error('You can\'t change challenge track')
     //   }
     // }
-
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
