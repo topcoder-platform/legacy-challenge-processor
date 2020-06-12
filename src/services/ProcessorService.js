@@ -99,6 +99,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.subTrack = typeRes.body.abbreviation // FIXME: thomas
       // TASK is named as FIRST_2_FINISH on legacy
       if (data.subTrack === constants.challengeAbbreviations.TASK) {
+        data.task = true
         data.subTrack = constants.challengeAbbreviations.FIRST_2_FINISH
       }
       data.legacyTypeId = typeRes.body.legacyId
