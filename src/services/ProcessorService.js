@@ -303,7 +303,7 @@ async function processUpdate (message) {
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (v5Challenge.typeId === config.TASK_TYPE_ID) {
+        if (v5Challenge.body.typeId === config.TASK_TYPE_ID) {
           logger.info('Challenge type is TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
@@ -312,7 +312,7 @@ async function processUpdate (message) {
           logger.info(`Will close the challenge with ID ${message.payload.legacyId}. Winner ${winnerId}!`)
           await closeChallenge(message.payload.legacyId, winnerId)
         } else {
-          logger.info(`Challenge type is ${v5Challenge.typeId}.. Skip closing challenge...`)
+          logger.info(`Challenge type is ${v5Challenge.body.typeId}.. Skip closing challenge...`)
         }
       }
     }
