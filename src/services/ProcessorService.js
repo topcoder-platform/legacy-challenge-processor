@@ -294,19 +294,25 @@ async function processUpdate (message) {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
 
     if (message.payload.status) {
-      if (message.payload.status === constants.challengeStatuses.Active && challenge.status !== constants.challengeStatuses.Active) {
+      logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
+      if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
+        logger.info('Activating challenge...')
         await activateChallenge(message.payload.legacyId)
+        logger.info('Activated!')
       }
-      if (message.payload.status === constants.challengeStatuses.Completed && challenge.status !== constants.challengeStatuses.Completed) {
+      if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
         if (v5Challenge.typeId === config.TASK_TYPE_ID) {
+          logger.info('Challenge type is TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
           }
           const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
           logger.info(`Will close the challenge with ID ${message.payload.legacyId}. Winner ${winnerId}!`)
           await closeChallenge(message.payload.legacyId, winnerId)
+        } else {
+          logger.info(`Challenge type is ${v5Challenge.typeId}.. Skip closing challenge...`)
         }
       }
     }
