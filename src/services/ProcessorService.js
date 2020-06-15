@@ -97,6 +97,11 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     if (payload.typeId) {
       const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
       data.subTrack = typeRes.body.abbreviation // FIXME: thomas
+      // TASK is named as FIRST_2_FINISH on legacy
+      if (data.subTrack === constants.challengeAbbreviations.TASK) {
+        data.task = true
+        data.subTrack = constants.challengeAbbreviations.FIRST_2_FINISH
+      }
       data.legacyTypeId = typeRes.body.legacyId
     }
     if (payload.description) {
@@ -117,8 +122,8 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
       data.registrationStartsAt = new Date().toISOString()
-      data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
-      data.registrationDuration = registrationPhase.duration
+      data.registrationEndsAt = new Date(Date.now() + (registrationPhase || submissionPhase).duration).toISOString()
+      data.registrationDuration = (registrationPhase || submissionPhase).duration
       data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
       data.submissionDuration = submissionPhase.duration
 
@@ -151,7 +156,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       if (!challengePrizes) {
         throw new Error('Challenge prize information is invalid.')
       }
-      data.prizes = _.map(challengePrizes[0].prizes, 'value').sort((a, b) => b - a)
+      data.prizes = _.map(challengePrizes.prizes, 'value').sort((a, b) => b - a)
     }
     if (payload.tags) {
       const techResult = await getTechnologies(m2mToken)
@@ -287,19 +292,28 @@ async function processUpdate (message) {
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
+    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
+
     if (message.payload.status) {
-      if (message.payload.status === constants.challengeStatuses.Active && challenge.status !== constants.challengeStatuses.Active) {
+      logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
+      if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
+        logger.info('Activating challenge...')
         await activateChallenge(message.payload.legacyId)
+        logger.info('Activated!')
       }
-      if (message.payload.status === constants.challengeStatuses.Completed && challenge.status !== constants.challengeStatuses.Completed) {
+      if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (v5Challenge.typeId === config.TASK_TYPE_ID) {
+        if (v5Challenge.body.typeId === config.TASK_TYPE_ID) {
+          logger.info('Challenge type is TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
           }
           const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
+          logger.info(`Will close the challenge with ID ${message.payload.legacyId}. Winner ${winnerId}!`)
           await closeChallenge(message.payload.legacyId, winnerId)
+        } else {
+          logger.info(`Challenge type is ${v5Challenge.body.typeId}.. Skip closing challenge...`)
         }
       }
     }
@@ -313,8 +327,6 @@ async function processUpdate (message) {
     //     throw new Error('You can\'t change challenge track')
     //   }
     // }
-
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
