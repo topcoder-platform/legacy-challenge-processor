@@ -122,8 +122,8 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
       data.registrationStartsAt = new Date().toISOString()
-      data.registrationEndsAt = new Date(Date.now() + registrationPhase.duration).toISOString()
-      data.registrationDuration = registrationPhase.duration
+      data.registrationEndsAt = new Date(Date.now() + (registrationPhase || submissionPhase).duration).toISOString()
+      data.registrationDuration = (registrationPhase || submissionPhase).duration
       data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
       data.submissionDuration = submissionPhase.duration
 
