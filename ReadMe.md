@@ -34,6 +34,7 @@ The following parameters can be set in config files or in env variables:
     if provided, it can be either path to private key file or private key content
 - KAFKA_GROUP_ID: the Kafka group id, default value is 'legacy-challenge-processor'
 - KAFKA_ERROR_TOPIC: The kafka error topic.
+- BUSAPI_URL: Bus API URL
 - CREATE_CHALLENGE_TOPIC: the create challenge Kafka message topic, default value is 'challenge.notification.create'
 - UPDATE_CHALLENGE_TOPIC: the update challenge Kafka message topic, default value is 'challenge.notification.update'
 - AUTH0_URL: Auth0 URL, used to get TC M2M token

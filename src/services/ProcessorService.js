@@ -286,9 +286,17 @@ async function processUpdate (message) {
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false)
   logger.debug('Parsed Payload', saveDraftContestDTO)
+  let challenge
   try {
     // ensure challenge existed
-    const challenge = await getChallengeById(m2mToken, message.payload.legacyId)
+    challenge = await getChallengeById(m2mToken, message.payload.legacyId)
+  } catch (e) {
+    // postponne kafka event
+    logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
+    await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
+    return
+  }
+  try {
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
