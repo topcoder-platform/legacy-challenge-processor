@@ -293,7 +293,12 @@ async function processUpdate (message) {
   } catch (e) {
     // postponne kafka event
     logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
-    await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
+    await new Promise((resolve) => {
+      setTimeout(async () => {
+        await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
+        resolve()
+      }, config.RETRY_TIMEOUT)
+    })
     return
   }
   try {
