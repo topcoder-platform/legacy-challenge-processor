@@ -14,6 +14,8 @@ module.exports = {
   // Kafka group id
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'legacy-challenge-processor',
   KAFKA_ERROR_TOPIC: process.env.KAFKA_ERROR_TOPIC || 'common.error.reporting',
+  BUSAPI_URL: process.env.BUSAPI_URL || 'https://api.topcoder-dev.com/v5',
+  RETRY_TIMEOUT: process.env.RETRY_TIMEOUT || 10 * 1000,
 
   // Topics to listen
   CREATE_CHALLENGE_TOPIC: process.env.CREATE_CHALLENGE_TOPIC || 'challenge.notification.create',
