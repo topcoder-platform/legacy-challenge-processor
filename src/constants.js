@@ -47,7 +47,8 @@ const challengeStatuses = {
 
 const challengeAbbreviations = {
   TASK: 'TASK',
-  FIRST_2_FINISH: 'FIRST_2_FINISH'
+  FIRST_2_FINISH: 'FIRST_2_FINISH',
+  DESIGN_FIRST_2_FINISH: 'DESIGN_FIRST_2_FINISH'
 }
 
 module.exports = {
