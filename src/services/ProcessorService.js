@@ -95,14 +95,28 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.milestoneId = 1
     }
     if (payload.typeId) {
-      const typeRes = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
-      data.subTrack = typeRes.body.abbreviation // FIXME: thomas
-      // TASK is named as FIRST_2_FINISH on legacy
-      if (data.subTrack === constants.challengeAbbreviations.TASK) {
-        data.task = true
-        data.subTrack = constants.challengeAbbreviations.FIRST_2_FINISH
+      const v5Type = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
+      const v4TypeList = await helper.getRequest(`${config.V4_CHALLENGE_TYPE_API_URL}`, m2mToken)
+      const v4Type = _.find(_.get(v4TypeList, 'body.result.content', []), type => type.id === v5Type.body.legacyId)
+      if (!v4Type) {
+        throw new Error(`There is no mapping between v5 Type ${v5Type.body.name} and V4`)
       }
-      data.legacyTypeId = typeRes.body.legacyId
+      data.subTrack = v4Type.subTrack
+      // TASK is named as FIRST_2_FINISH on legacy
+      if (v5Type.body.abbreviation === constants.challengeAbbreviations.TASK) {
+        data.task = true
+        switch (_.toLower(_.toString(data.track))) {
+          case 'develop':
+            data.subTrack = constants.challengeAbbreviations.FIRST_2_FINISH
+            break
+          case 'design':
+            data.subTrack = constants.challengeAbbreviations.DESIGN_FIRST_2_FINISH
+            break
+          default:
+            throw new Error(`Cannot create a task for track ${data.track}`)
+        }
+      }
+      data.legacyTypeId = v5Type.body.legacyId
     }
     if (payload.description) {
       try {
