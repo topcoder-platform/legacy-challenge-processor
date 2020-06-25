@@ -56,6 +56,49 @@ async function getDirectProjectId (m2mToken, projectId) {
 }
 
 /**
+ * Get legacy challenge track and subTrack values based on the v5 legacy.track and typeId
+ * @param {String} legacyTrack the legacy.track value from the v5 challenge object
+ * @param {String} typeId the v5 type ID
+ * @param {String} m2mToken the M2M token
+ */
+async function getLegacyTrackInformation (legacyTrack, typeId, m2mToken) {
+  const data = {
+    track: _.toUpper(legacyTrack)
+  }
+  if (_.isUndefined(data.track)) {
+    throw new Error(`Cannot create a challenge without a track. Please use one of [${_.values(constants.challengeTracks).join(', ')}]`)
+  }
+  if (_.isUndefined(typeId)) {
+    throw new Error('Cannot create a challenge without a typeId.')
+  }
+
+  // Use the configured subTrack if set for the given track/typeId
+  if (constants.legacySubTrackMapping[_.toLower(legacyTrack)] && constants.legacySubTrackMapping[_.toLower(legacyTrack)][typeId]) {
+    data.subTrack = constants.legacySubTrackMapping[_.toLower(legacyTrack)][typeId]
+  } else {
+    // otherwise fetch v4 challenge type based on the v5 type.legacyId
+    const v5Type = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${typeId}`, m2mToken)
+    const v4TypeList = await helper.getRequest(`${config.V4_CHALLENGE_TYPE_API_URL}`, m2mToken)
+    const v4Type = _.find(_.get(v4TypeList, 'body.result.content', []), type => type.id === v5Type.body.legacyId)
+    if (!v4Type) {
+      throw new Error(`There is no mapping between v5 Type ${v5Type.body.name} and V4`)
+    }
+    data.subTrack = v4Type.subTrack
+    data.legacyTypeId = v5Type.body.legacyId
+  }
+
+  // If it's a private task, set the `task` property to `true`
+  if (typeId === constants.challengeTypes.TASK_TYPE_ID) {
+    // Tasks can only be created for the develop and design tracks
+    if (data.track !== constants.challengeTracks.DEVELOP && data.track !== constants.challengeTracks.DESIGN) {
+      throw new Error(`Cannot create a task for track ${data.track}`)
+    }
+    data.task = true
+  }
+  return data
+}
+
+/**
  * Construct DTO from Kafka message payload.
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
@@ -71,8 +114,11 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       projectId = _.get((await getDirectProjectId(m2mToken, payload.projectId)), 'directProjectId')
       if (!projectId) throw new Error(`Could not find Direct Project ID for Project ${payload.projectId}`)
     }
+
+    const legacyTrackInfo = await getLegacyTrackInformation(_.get(payload, 'legacy.track'), payload.typeId, m2mToken)
+
     const data = {
-      track: _.get(payload, 'legacy.track'), // FIXME: thomas
+      ...legacyTrackInfo,
       name: payload.name,
       reviewType: _.get(payload, 'legacy.reviewType'),
       projectId,
@@ -93,30 +139,6 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.submissionGuidelines = 'Please read above'
       data.submissionVisibility = true
       data.milestoneId = 1
-    }
-    if (payload.typeId) {
-      const v5Type = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${payload.typeId}`, m2mToken)
-      const v4TypeList = await helper.getRequest(`${config.V4_CHALLENGE_TYPE_API_URL}`, m2mToken)
-      const v4Type = _.find(_.get(v4TypeList, 'body.result.content', []), type => type.id === v5Type.body.legacyId)
-      if (!v4Type) {
-        throw new Error(`There is no mapping between v5 Type ${v5Type.body.name} and V4`)
-      }
-      data.subTrack = v4Type.subTrack
-      // TASK is named as FIRST_2_FINISH on legacy
-      if (v5Type.body.abbreviation === constants.challengeAbbreviations.TASK) {
-        data.task = true
-        switch (_.toLower(_.toString(data.track))) {
-          case 'develop':
-            data.subTrack = constants.challengeAbbreviations.FIRST_2_FINISH
-            break
-          case 'design':
-            data.subTrack = constants.challengeAbbreviations.DESIGN_FIRST_2_FINISH
-            break
-          default:
-            throw new Error(`Cannot create a task for track ${data.track}`)
-        }
-      }
-      data.legacyTypeId = v5Type.body.legacyId
     }
     if (payload.description) {
       try {
@@ -331,7 +353,7 @@ async function processUpdate (message) {
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (v5Challenge.body.typeId === config.TASK_TYPE_ID) {
+        if (v5Challenge.body.typeId === constants.challengeTypes.TASK_TYPE_ID) {
           logger.info('Challenge type is TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
