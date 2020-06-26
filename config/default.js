@@ -43,6 +43,8 @@ module.exports = {
   SUBMISSION_PHASE_ID: process.env.SUBMISSION_PHASE_ID || '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49',
   CHECKPOINT_SUBMISSION_PHASE_ID: process.env.CHECKPOINT_SUBMISSION_PHASE_ID || 'd8a2cdbe-84d1-4687-ab75-78a6a7efdcc8',
 
-  // Challenge Type IDs
-  TASK_TYPE_ID: process.env.TASK_TYPE_ID || 'e885273d-aeda-42c0-917d-bfbf979afbba'
+  // challenge types
+  TASK_TYPE_ID: process.env.TASK_TYPE_ID || 'e885273d-aeda-42c0-917d-bfbf979afbba',
+  CHALLENGE_TYPE_ID: process.env.CHALLENGE_TYPE_ID || '94eee466-9255-4b60-88d8-4f59c1810dd0',
+  FIRST_2_FINISH_TYPE_ID: process.env.FIRST_2_FINISH_TYPE_ID || '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49'
 }

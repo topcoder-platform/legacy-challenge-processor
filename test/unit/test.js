@@ -95,7 +95,7 @@ describe('Topcoder - Legacy Challenge Processor Unit Test', () => {
 
   it('process create challenge success', async () => {
     await service.processCreate(testTopics.create)
-    should.equal(debugLogs[3], 'GET /v5/challengeTypes/2f4ef3a8-ed35-40d1-b8a6-7371a700d098')
+    should.equal(debugLogs[3], 'GET /v5/challenge-types/2f4ef3a8-ed35-40d1-b8a6-7371a700d098')
     should.equal(debugLogs[4], 'GET /v4/technologies')
     should.equal(debugLogs[5], 'GET /v4/platforms')
     should.equal(debugLogs[8], 'POST /v4/challenges')
@@ -140,7 +140,7 @@ describe('Topcoder - Legacy Challenge Processor Unit Test', () => {
 
   it('process update challenge success', async () => {
     await service.processUpdate(testTopics.update)
-    should.equal(debugLogs[3], 'GET /v5/challengeTypes/2f4ef3a8-ed35-40d1-b8a6-7371a700d098')
+    should.equal(debugLogs[3], 'GET /v5/challenge-types/2f4ef3a8-ed35-40d1-b8a6-7371a700d098')
     should.equal(debugLogs[7], 'GET /v4/challenges/30055016')
     should.equal(debugLogs[8], 'PUT /v4/challenges/30055016')
     const body = JSON.parse(debugLogs[9])
@@ -158,7 +158,7 @@ describe('Topcoder - Legacy Challenge Processor Unit Test', () => {
     const message = _.cloneDeep(testTopics.update)
     message.payload.prizeSets = [{ type: 'Check Point', prizes: [{ type: 'first-place', value: 1 }] }]
     await service.processUpdate(message)
-    should.equal(debugLogs[3], 'GET /v5/challengeTypes/2f4ef3a8-ed35-40d1-b8a6-7371a700d098')
+    should.equal(debugLogs[3], 'GET /v5/challenge-types/2f4ef3a8-ed35-40d1-b8a6-7371a700d098')
     should.equal(debugLogs[7], 'GET /v4/challenges/30055016')
     should.equal(debugLogs[8], 'PUT /v4/challenges/30055016')
     const body = JSON.parse(debugLogs[9])
