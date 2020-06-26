@@ -88,7 +88,7 @@ async function getLegacyTrackInformation (legacyTrack, typeId, m2mToken) {
   }
 
   // If it's a private task, set the `task` property to `true`
-  if (typeId === constants.challengeTypes.TASK_TYPE_ID) {
+  if (typeId === config.TASK_TYPE_ID) {
     // Tasks can only be created for the develop and design tracks
     if (data.track !== constants.challengeTracks.DEVELOP && data.track !== constants.challengeTracks.DESIGN) {
       throw new Error(`Cannot create a task for track ${data.track}`)
@@ -353,7 +353,7 @@ async function processUpdate (message) {
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (v5Challenge.body.typeId === constants.challengeTypes.TASK_TYPE_ID) {
+        if (v5Challenge.body.typeId === config.TASK_TYPE_ID) {
           logger.info('Challenge type is TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')

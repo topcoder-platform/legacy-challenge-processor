@@ -45,10 +45,13 @@ The following parameters can be set in config files or in env variables:
 - AUTH0_CLIENT_SECRET: Auth0 client secret, used to get TC M2M token
 - AUTH0_PROXY_SERVER_URL: Proxy Auth0 URL, used to get TC M2M token
 - V5_CHALLENGE_API_URL: v5 challenge api url, default value is 'http://localhost:4000/v5/challenges'
-- V5_CHALLENGE_TYPE_API_URL: v5 challenge type api url, default value is 'http://localhost:4000/v5/challengeTypes'
+- V5_CHALLENGE_TYPE_API_URL: v5 challenge type api url, default value is 'http://localhost:4000/v5/challenge-types'
 - V4_CHALLENGE_API_URL: v4 challenge api url, default value is 'http://localhost:4000/v4/challenges'
 - V4_TECHNOLOGIES_API_URL: v4 technologies api url, default value is 'http://localhost:4000/v4/technologies'
 - V4_PLATFORMS_API_URL: v4 platforms api url, default value is 'http://localhost:4000/v4/platforms'
+- TASK_TYPE_ID: The v5 Type ID for tasks
+- CHALLENGE_TYPE_ID: The v5 Type ID for regular challenges
+- FIRST_2_FINISH_TYPE_ID: The v5 Type ID for F2F challenges
 
 There is a `/health` endpoint that checks for the health of the app. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable
 
@@ -142,7 +145,7 @@ Please see that 192.168.1.3 is the IP of host machine for docker where we run al
 ```
 KAFKA_URL=192.168.1.3:9092
 V5_CHALLENGE_API_URL=http://192.168.1.3:4000/v5/challenges
-V5_CHALLENGE_TYPE_API_URL=http://192.168.1.3:4000/v5/challengeTypes
+V5_CHALLENGE_TYPE_API_URL=http://192.168.1.3:4000/v5/challenge-types
 V4_CHALLENGE_API_URL=http://192.168.1.3:4000/v4/challenges
 V4_TECHNOLOGIES_API_URL=http://192.168.1.3:4000/v4/technologies
 V4_PLATFORMS_API_URL=http://192.168.1.3:4000/v4/platforms

@@ -1,4 +1,5 @@
 const _ = require('lodash')
+const config = require('config')
 
 /**
  * constants
@@ -47,12 +48,6 @@ const challengeStatuses = {
   CancelledZeroRegistrations: 'Cancelled - Zero Registrations'
 }
 
-const challengeTypes = {
-  TASK_TYPE_ID: 'e885273d-aeda-42c0-917d-bfbf979afbba',
-  CHALLENGE_TYPE_ID: '94eee466-9255-4b60-88d8-4f59c1810dd0',
-  FIRST_2_FINISH_TYPE_ID: '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49'
-}
-
 const challengeTracks = {
   DEVELOP: 'DEVELOP',
   DESIGN: 'DESIGN',
@@ -70,14 +65,14 @@ const challengeAbbreviations = {
 
 const legacySubTrackMapping = {
   [_.toLower(challengeTracks.DEVELOP)]: {
-    [challengeTypes.TASK_TYPE_ID]: challengeAbbreviations.FIRST_2_FINISH,
-    [challengeTypes.CHALLENGE_TYPE_ID]: challengeAbbreviations.CODE,
-    [challengeTypes.FIRST_2_FINISH_TYPE_ID]: challengeAbbreviations.FIRST_2_FINISH
+    [config.TASK_TYPE_ID]: challengeAbbreviations.FIRST_2_FINISH,
+    [config.CHALLENGE_TYPE_ID]: challengeAbbreviations.CODE,
+    [config.FIRST_2_FINISH_TYPE_ID]: challengeAbbreviations.FIRST_2_FINISH
   },
   [_.toLower(challengeTracks.DESIGN)]: {
-    [challengeTypes.TASK_TYPE_ID]: challengeAbbreviations.DESIGN_FIRST_2_FINISH,
-    [challengeTypes.CHALLENGE_TYPE_ID]: challengeAbbreviations.APPLICATION_FRONT_END_DESIGN,
-    [challengeTypes.FIRST_2_FINISH_TYPE_ID]: challengeAbbreviations.DESIGN_FIRST_2_FINISH
+    [config.TASK_TYPE_ID]: challengeAbbreviations.DESIGN_FIRST_2_FINISH,
+    [config.CHALLENGE_TYPE_ID]: challengeAbbreviations.APPLICATION_FRONT_END_DESIGN,
+    [config.FIRST_2_FINISH_TYPE_ID]: challengeAbbreviations.DESIGN_FIRST_2_FINISH
   }
 }
 
@@ -89,6 +84,5 @@ module.exports = {
   challengeStatuses,
   challengeAbbreviations,
   challengeTracks,
-  legacySubTrackMapping,
-  challengeTypes
+  legacySubTrackMapping
 }

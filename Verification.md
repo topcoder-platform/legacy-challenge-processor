@@ -69,7 +69,7 @@ debug: Successfully processed message
 4. Check the mock-api logs:
 
 ```sql
-debug: GET /v5/challengeTypes/0b2ac310-eaf0-40e3-b66b-37e5e9e09365
+debug: GET /v5/challenge-types/0b2ac310-eaf0-40e3-b66b-37e5e9e09365
 debug: GET /v4/technologies
 debug: GET /v4/platforms
 debug: POST /v4/challenges
@@ -152,7 +152,7 @@ debug: Successfully processed message
 8. Watch the logs of mock-api :
 
 ```bash
-debug: GET /v5/challengeTypes/d0f8ad73-d9c6-4dbc-b213-e643f43d28e7
+debug: GET /v5/challenge-types/d0f8ad73-d9c6-4dbc-b213-e643f43d28e7
 debug: GET /v4/technologies
 debug: GET /v4/platforms
 debug: GET /v4/challenges/30055016
