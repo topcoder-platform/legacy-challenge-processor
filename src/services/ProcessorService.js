@@ -283,7 +283,7 @@ processCreate.schema = {
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
-      }),
+      }).unknown(true),
       billingAccountId: Joi.number(),
       name: Joi.string().required(),
       description: Joi.string(),
@@ -397,7 +397,7 @@ processUpdate.schema = {
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive(),
         informixModified: Joi.string()
-      }),
+      }).unknown(true),
       billingAccountId: Joi.number(),
       typeId: Joi.string(),
       name: Joi.string(),
