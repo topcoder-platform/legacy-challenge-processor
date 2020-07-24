@@ -49,7 +49,7 @@ The following parameters can be set in config files or in env variables:
 - V4_CHALLENGE_API_URL: v4 challenge api url, default value is 'http://localhost:4000/v4/challenges'
 - V4_TECHNOLOGIES_API_URL: v4 technologies api url, default value is 'http://localhost:4000/v4/technologies'
 - V4_PLATFORMS_API_URL: v4 platforms api url, default value is 'http://localhost:4000/v4/platforms'
-- TASK_TYPE_ID: The v5 Type ID for tasks
+- TASK_TYPE_IDS: The v5 Type ID for tasks per track
 - CHALLENGE_TYPE_ID: The v5 Type ID for regular challenges
 - FIRST_2_FINISH_TYPE_ID: The v5 Type ID for F2F challenges
 
