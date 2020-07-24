@@ -88,10 +88,10 @@ async function getLegacyTrackInformation (legacyTrack, typeId, m2mToken) {
   }
 
   // If it's a private task, set the `task` property to `true`
-  if (typeId === config.TASK_TYPE_ID) {
-    // Tasks can only be created for the develop and design tracks
-    if (data.track !== constants.challengeTracks.DEVELOP && data.track !== constants.challengeTracks.DESIGN) {
-      throw new Error(`Cannot create a task for track ${data.track}`)
+  if (_.values(config.TASK_TYPE_IDS).includes(typeId)) {
+    // Tasks can only be created for the develop and design tracks so we're setting the track for QA/DS to DEVELOP
+    if (data.track === constants.challengeTracks.QA || data.track !== constants.challengeTracks.DATA_SCIENCE) {
+      data.track = constants.challengeTracks.DEVELOP
     }
     data.task = true
   }
@@ -157,17 +157,18 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
-      data.registrationStartsAt = new Date().toISOString()
-      data.registrationEndsAt = new Date(Date.now() + (registrationPhase || submissionPhase).duration).toISOString()
+      const startDate = payload.startDate ? new Date(payload.startDate) : new Date()
+      data.registrationStartsAt = startDate.toISOString()
+      data.registrationEndsAt = new Date(startDate.getTime() + (registrationPhase || submissionPhase).duration).toISOString()
       data.registrationDuration = (registrationPhase || submissionPhase).duration
-      data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
+      data.submissionEndsAt = new Date(startDate.getTime() + submissionPhase.duration).toISOString()
       data.submissionDuration = submissionPhase.duration
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.phaseId === config.CHECKPOINT_SUBMISSION_PHASE_ID)
       if (checkpointPhase) {
-        data.checkpointSubmissionStartsAt = new Date().toISOString()
-        data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
+        data.checkpointSubmissionStartsAt = startDate.toISOString()
+        data.checkpointSubmissionEndsAt = new Date(startDate.getTime() + checkpointPhase.duration).toISOString()
         data.checkpointSubmissionDuration = checkpointPhase.duration
       } else {
         data.checkpointSubmissionStartsAt = null
@@ -283,7 +284,7 @@ processCreate.schema = {
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
-      }),
+      }).unknown(true),
       billingAccountId: Joi.number(),
       name: Joi.string().required(),
       description: Joi.string(),
@@ -301,7 +302,8 @@ processCreate.schema = {
       tags: Joi.array().items(Joi.string().required()), // tag names
       projectId: Joi.number().integer().positive().required(),
       copilotId: Joi.number().integer().positive().optional(),
-      status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
+      status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required(),
+      startDate: Joi.date(),
     }).unknown(true).required()
   }).required()
 }
@@ -353,7 +355,7 @@ async function processUpdate (message) {
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (v5Challenge.body.typeId === config.TASK_TYPE_ID) {
+        if (_.values(config.TASK_TYPE_IDS).includes(v5Challenge.body.typeId)) {
           logger.info('Challenge type is TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
@@ -397,7 +399,7 @@ processUpdate.schema = {
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive(),
         informixModified: Joi.string()
-      }),
+      }).unknown(true),
       billingAccountId: Joi.number(),
       typeId: Joi.string(),
       name: Joi.string(),
@@ -414,7 +416,8 @@ processUpdate.schema = {
         }).unknown(true))
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
-      projectId: Joi.number().integer().positive().allow(null)
+      projectId: Joi.number().integer().positive().allow(null),
+      startDate: Joi.date()
     }).unknown(true).required()
   }).required()
 }
