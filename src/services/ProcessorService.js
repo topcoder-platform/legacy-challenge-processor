@@ -157,17 +157,18 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
-      data.registrationStartsAt = new Date().toISOString()
-      data.registrationEndsAt = new Date(Date.now() + (registrationPhase || submissionPhase).duration).toISOString()
+      const startDate = payload.startDate ? new Date(payload.startDate) : new Date()
+      data.registrationStartsAt = startDate.toISOString()
+      data.registrationEndsAt = new Date(startDate.getTime() + (registrationPhase || submissionPhase).duration).toISOString()
       data.registrationDuration = (registrationPhase || submissionPhase).duration
-      data.submissionEndsAt = new Date(Date.now() + submissionPhase.duration).toISOString()
+      data.submissionEndsAt = new Date(startDate.getTime() + submissionPhase.duration).toISOString()
       data.submissionDuration = submissionPhase.duration
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.phaseId === config.CHECKPOINT_SUBMISSION_PHASE_ID)
       if (checkpointPhase) {
-        data.checkpointSubmissionStartsAt = new Date().toISOString()
-        data.checkpointSubmissionEndsAt = new Date(Date.now() + checkpointPhase.duration).toISOString()
+        data.checkpointSubmissionStartsAt = startDate.toISOString()
+        data.checkpointSubmissionEndsAt = new Date(startDate.getTime() + checkpointPhase.duration).toISOString()
         data.checkpointSubmissionDuration = checkpointPhase.duration
       } else {
         data.checkpointSubmissionStartsAt = null
@@ -301,7 +302,8 @@ processCreate.schema = {
       tags: Joi.array().items(Joi.string().required()), // tag names
       projectId: Joi.number().integer().positive().required(),
       copilotId: Joi.number().integer().positive().optional(),
-      status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required()
+      status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required(),
+      startDate: Joi.date(),
     }).unknown(true).required()
   }).required()
 }
@@ -414,7 +416,8 @@ processUpdate.schema = {
         }).unknown(true))
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
-      projectId: Joi.number().integer().positive().allow(null)
+      projectId: Joi.number().integer().positive().allow(null),
+      startDate: Joi.date()
     }).unknown(true).required()
   }).required()
 }
