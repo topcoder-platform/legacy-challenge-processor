@@ -37,7 +37,7 @@ logger.logFullError = (err, signature) => {
   }
 
   if (!err.logged) {
-    logger.error(util.inspect(err))
+    logger.error(`Error: ${util.inspect(err)}`)
     err.logged = true
   }
 }
