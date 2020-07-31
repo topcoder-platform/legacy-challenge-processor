@@ -257,8 +257,7 @@ async function processCreate (message) {
       legacy: {
         ...message.payload.legacy,
         directProjectId: newChallenge.body.result.content.projectId,
-        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId),
-        informixModified: _.get(newChallenge, 'body.result.content.updatedAt', new Date())
+        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId)
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
@@ -397,8 +396,7 @@ processUpdate.schema = {
         reviewType: Joi.string().required(),
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
-        forumId: Joi.number().integer().positive(),
-        informixModified: Joi.string()
+        forumId: Joi.number().integer().positive()
       }).unknown(true),
       billingAccountId: Joi.number(),
       typeId: Joi.string(),
@@ -427,4 +425,4 @@ module.exports = {
   processUpdate
 }
 
-logger.buildService(module.exports)
+// logger.buildService(module.exports)
