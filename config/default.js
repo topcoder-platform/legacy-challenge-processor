@@ -42,16 +42,5 @@ module.exports = {
   // PHASE IDs
   REGISTRATION_PHASE_ID: process.env.REGISTRATION_PHASE_ID || 'a93544bc-c165-4af4-b55e-18f3593b457a',
   SUBMISSION_PHASE_ID: process.env.SUBMISSION_PHASE_ID || '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49',
-  CHECKPOINT_SUBMISSION_PHASE_ID: process.env.CHECKPOINT_SUBMISSION_PHASE_ID || 'd8a2cdbe-84d1-4687-ab75-78a6a7efdcc8',
-
-  // challenge types
-  TASK_TYPE_ID: process.env.TASK_TYPE_ID || 'e885273d-aeda-42c0-917d-bfbf979afbba',
-  TASK_TYPE_IDS: {
-    DEVELOP: process.env.DEVELOP_TASK_TYPE_ID || 'e885273d-aeda-42c0-917d-bfbf979afbba',
-    DESIGN: process.env.DESIGN_TASK_TYPE_ID || '149a2013-92b9-4ca9-b35d-c337d47a2490',
-    QA: process.env.QA_TASK_TYPE_ID || 'a91e69fd-6240-4227-8484-66b8defc4ca9',
-    DATA_SCENCE: process.env.DATA_SCENCE_TASK_TYPE_ID || 'b3b60e22-e302-4db8-bef8-4eaff965565f'
-  },
-  CHALLENGE_TYPE_ID: process.env.CHALLENGE_TYPE_ID || '94eee466-9255-4b60-88d8-4f59c1810dd0',
-  FIRST_2_FINISH_TYPE_ID: process.env.FIRST_2_FINISH_TYPE_ID || '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49'
+  CHECKPOINT_SUBMISSION_PHASE_ID: process.env.CHECKPOINT_SUBMISSION_PHASE_ID || 'd8a2cdbe-84d1-4687-ab75-78a6a7efdcc8'
 }

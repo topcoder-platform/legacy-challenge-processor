@@ -50,9 +50,6 @@ The following parameters can be set in config files or in env variables:
 - V4_TECHNOLOGIES_API_URL: v4 technologies api url, default value is 'http://localhost:4000/v4/technologies'
 - V4_PLATFORMS_API_URL: v4 platforms api url, default value is 'http://localhost:4000/v4/platforms'
 - V5_CHALLENGE_MIGRATION_API_URL: v5 challenge migration API URL, default value is https://api.topcoder-dev.com/v5/challenge-migration
-- TASK_TYPE_IDS: The v5 Type ID for tasks per track
-- CHALLENGE_TYPE_ID: The v5 Type ID for regular challenges
-- FIRST_2_FINISH_TYPE_ID: The v5 Type ID for F2F challenges
 
 There is a `/health` endpoint that checks for the health of the app. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable
 
