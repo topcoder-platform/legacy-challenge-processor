@@ -131,21 +131,15 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.submissionVisibility = true
       data.milestoneId = 1
     }
-    // TODO: Remove this
-    // if (payload.description) {
-    //   try {
-    //     data.detailedRequirements = converter.makeHtml(payload.description)
-    //   } catch (e) {
-    //     data.detailedRequirements = payload.description
-    //   }
-    // }
-    // if (payload.privateDescription) {
-    //   try {
-    //     data.privateDescription = converter.makeHtml(payload.privateDescription)
-    //   } catch (e) {
-    //     data.privateDescription = payload.privateDescription
-    //   }
-    // }
+
+    data.detailedRequirements = payload.description
+    if (payload.privateDescription) {
+      // don't include the private description as there could be
+      // info that shouldn't be public. Just identify the v5 challenge id
+      data.detailedRequirements += '\n\r'
+      data.detailedRequirements += 'V5 Challenge - Additional Details: ' + payload.id
+    }
+
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
