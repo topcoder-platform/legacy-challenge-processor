@@ -242,6 +242,9 @@ async function processCreate (message) {
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
+        track: saveDraftContestDTO.track,
+        subTrack: saveDraftContestDTO.subTrack,
+        isTask: saveDraftContestDTO.task || false,
         directProjectId: newChallenge.body.result.content.projectId,
         forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId)
       },
