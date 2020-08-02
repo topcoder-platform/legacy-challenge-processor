@@ -211,7 +211,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
         }
       }
       if (legacyGroups.length > 0) {
-        data.groups = legacyGroups
+        data.groupIds = legacyGroups
       }
     }
     return data
