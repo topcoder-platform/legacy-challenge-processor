@@ -39,6 +39,8 @@ module.exports = {
   V5_PROJECTS_API_URL: process.env.V5_PROJECTS_API_URL || 'https://api.topcoder-dev.com/v5/projects',
   V5_CHALLENGE_MIGRATION_API_URL: process.env.V5_CHALLENGE_MIGRATION_API_URL || 'https://api.topcoder-dev.com/v5/challenge-migration',
 
+  V5_GROUPS_API_URL: process.env.V5_GROUPS_API_URL || 'https://api.topcoder-dev.com/v5/groups',
+
   // PHASE IDs
   REGISTRATION_PHASE_ID: process.env.REGISTRATION_PHASE_ID || 'a93544bc-c165-4af4-b55e-18f3593b457a',
   SUBMISSION_PHASE_ID: process.env.SUBMISSION_PHASE_ID || '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49',

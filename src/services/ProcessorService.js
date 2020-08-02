@@ -15,6 +15,16 @@ const constants = require('../constants')
 // const converter = new showdown.Converter()
 
 /**
+ * Get group information by V5 UUID
+ * @param {String} v5GroupId the v5 group UUID
+ * @param {String} m2mToken token for accessing the API
+ */
+async function getGroup (v5GroupId, m2mToken) {
+  const response = await helper.getRequest(`${config.V5_GROUPS_API_URL}/${v5GroupId}`, m2mToken)
+  return response.body
+}
+
+/**
  * Get technologies from V4 API
  * @param {String} m2mToken token for accessing the API
  * @returns {Object} technologies response body
@@ -188,6 +198,22 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       const platResult = await getPlatforms(m2mToken)
       data.platforms = _.filter(platResult.result.content, e => payload.tags.includes(e.name))
     }
+    if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
+      const legacyGroups = []
+      for (const group of payload.groups) {
+        try {
+          const groupInfo = await getGroup(group, m2mToken)
+          if (!_.isEmpty(_.get(groupInfo, 'oldId'))) {
+            legacyGroups.push(_.get(groupInfo, 'oldId'))
+          }
+        } catch (e) {
+          logger.warn(`Failed to load details for group ${group}`)
+        }
+      }
+      if (legacyGroups.length > 0) {
+        data.groups = legacyGroups
+      }
+    }
     return data
   } catch (err) {
     // Debugging
@@ -297,6 +323,7 @@ processCreate.schema = {
       projectId: Joi.number().integer().positive().required(),
       copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required(),
+      groups: Joi.array().items(Joi.string()),
       startDate: Joi.date()
     }).unknown(true).required()
   }).required()
@@ -416,6 +443,7 @@ processUpdate.schema = {
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
       projectId: Joi.number().integer().positive().allow(null),
+      groups: Joi.array().items(Joi.string()),
       startDate: Joi.date()
     }).unknown(true).required()
   }).required()
