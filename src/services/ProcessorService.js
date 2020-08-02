@@ -82,7 +82,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
     return {
       track: res.body.track,
       subTrack: res.body.subTrack,
-      task: res.body.isTask
+      ...(res.body.isTask ? { task: true } : {})
     }
   } catch (e) {
     throw new Error(_.get(e, 'message', 'Failed to get V4 track/subTrack information'))
