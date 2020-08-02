@@ -364,6 +364,7 @@ async function processUpdate (message) {
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
+    logger.debug(`Request Body to call the V4 API: ${JSON.stringify(saveDraftContestDTO)}`)
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
 
     if (message.payload.status) {
