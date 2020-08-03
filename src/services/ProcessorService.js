@@ -10,8 +10,19 @@ const config = require('config')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
-const showdown = require('showdown')
-const converter = new showdown.Converter()
+// TODO: Remove this
+// const showdown = require('showdown')
+// const converter = new showdown.Converter()
+
+/**
+ * Get group information by V5 UUID
+ * @param {String} v5GroupId the v5 group UUID
+ * @param {String} m2mToken token for accessing the API
+ */
+async function getGroup (v5GroupId, m2mToken) {
+  const response = await helper.getRequest(`${config.V5_GROUPS_API_URL}/${v5GroupId}`, m2mToken)
+  return response.body
+}
 
 /**
  * Get technologies from V4 API
@@ -56,46 +67,36 @@ async function getDirectProjectId (m2mToken, projectId) {
 }
 
 /**
- * Get legacy challenge track and subTrack values based on the v5 legacy.track and typeId
- * @param {String} legacyTrack the legacy.track value from the v5 challenge object
+ * Get legacy challenge track and subTrack values based on the v5 trackId, typeId and tags
+ * @param {String} trackId the V5 track ID
  * @param {String} typeId the v5 type ID
+ * @param {Array<String>} tags the v5 tags
  * @param {String} m2mToken the M2M token
  */
-async function getLegacyTrackInformation (legacyTrack, typeId, m2mToken) {
-  const data = {
-    track: _.toUpper(legacyTrack)
-  }
-  if (_.isUndefined(data.track)) {
-    throw new Error(`Cannot create a challenge without a track. Please use one of [${_.values(constants.challengeTracks).join(', ')}]`)
+async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
+  if (_.isUndefined(trackId)) {
+    throw new Error('Cannot create a challenge without a trackId.')
   }
   if (_.isUndefined(typeId)) {
     throw new Error('Cannot create a challenge without a typeId.')
   }
-
-  // Use the configured subTrack if set for the given track/typeId
-  if (constants.legacySubTrackMapping[_.toLower(legacyTrack)] && constants.legacySubTrackMapping[_.toLower(legacyTrack)][typeId]) {
-    data.subTrack = constants.legacySubTrackMapping[_.toLower(legacyTrack)][typeId]
-  } else {
-    // otherwise fetch v4 challenge type based on the v5 type.legacyId
-    const v5Type = await helper.getRequest(`${config.V5_CHALLENGE_TYPE_API_URL}/${typeId}`, m2mToken)
-    const v4TypeList = await helper.getRequest(`${config.V4_CHALLENGE_TYPE_API_URL}`, m2mToken)
-    const v4Type = _.find(_.get(v4TypeList, 'body.result.content', []), type => type.id === v5Type.body.legacyId)
-    if (!v4Type) {
-      throw new Error(`There is no mapping between v5 Type ${v5Type.body.name} and V4`)
+  const query = [
+    `trackId=${trackId}`,
+    `typeId=${typeId}`
+  ]
+  _.each((tags || []), (tag) => {
+    query.push(`tags[]=${tag}`)
+  })
+  try {
+    const res = await helper.getRequest(`${config.V5_CHALLENGE_MIGRATION_API_URL}/convert-to-v4?${query.join('&')}`, m2mToken)
+    return {
+      track: res.body.track,
+      subTrack: res.body.subTrack,
+      ...(res.body.isTask ? { task: true } : {})
     }
-    data.subTrack = v4Type.subTrack
-    data.legacyTypeId = v5Type.body.legacyId
+  } catch (e) {
+    throw new Error(_.get(e, 'message', 'Failed to get V4 track/subTrack information'))
   }
-
-  // If it's a private task, set the `task` property to `true`
-  if (_.values(config.TASK_TYPE_IDS).includes(typeId)) {
-    // Tasks can only be created for the develop and design tracks so we're setting the track for QA/DS to DEVELOP
-    if (data.track === constants.challengeTracks.QA || data.track !== constants.challengeTracks.DATA_SCIENCE) {
-      data.track = constants.challengeTracks.DEVELOP
-    }
-    data.task = true
-  }
-  return data
 }
 
 /**
@@ -115,7 +116,7 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       if (!projectId) throw new Error(`Could not find Direct Project ID for Project ${payload.projectId}`)
     }
 
-    const legacyTrackInfo = await getLegacyTrackInformation(_.get(payload, 'legacy.track'), payload.typeId, m2mToken)
+    const legacyTrackInfo = await getLegacyTrackInformation(payload.trackId, payload.typeId, payload.tags, m2mToken)
 
     const data = {
       ...legacyTrackInfo,
@@ -140,20 +141,15 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.submissionVisibility = true
       data.milestoneId = 1
     }
-    if (payload.description) {
-      try {
-        data.detailedRequirements = converter.makeHtml(payload.description)
-      } catch (e) {
-        data.detailedRequirements = payload.description
-      }
-    }
+
+    data.detailedRequirements = payload.description
     if (payload.privateDescription) {
-      try {
-        data.privateDescription = converter.makeHtml(payload.privateDescription)
-      } catch (e) {
-        data.privateDescription = payload.privateDescription
-      }
+      // don't include the private description as there could be
+      // info that shouldn't be public. Just identify the v5 challenge id
+      data.detailedRequirements += '\n\r'
+      data.detailedRequirements += 'V5 Challenge - Additional Details: ' + payload.id
     }
+
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
@@ -201,6 +197,22 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
 
       const platResult = await getPlatforms(m2mToken)
       data.platforms = _.filter(platResult.result.content, e => payload.tags.includes(e.name))
+    }
+    if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
+      const legacyGroups = []
+      for (const group of payload.groups) {
+        try {
+          const groupInfo = await getGroup(group, m2mToken)
+          if (!_.isEmpty(_.get(groupInfo, 'oldId'))) {
+            legacyGroups.push(_.get(groupInfo, 'oldId'))
+          }
+        } catch (e) {
+          logger.warn(`Failed to load details for group ${group}`)
+        }
+      }
+      if (legacyGroups.length > 0) {
+        data.groupIds = legacyGroups
+      }
     }
     return data
   } catch (err) {
@@ -256,9 +268,11 @@ async function processCreate (message) {
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
+        track: saveDraftContestDTO.track,
+        subTrack: saveDraftContestDTO.subTrack,
+        isTask: saveDraftContestDTO.task || false,
         directProjectId: newChallenge.body.result.content.projectId,
-        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId),
-        informixModified: _.get(newChallenge, 'body.result.content.updatedAt', new Date())
+        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId)
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
@@ -277,7 +291,8 @@ processCreate.schema = {
     'mime-type': Joi.string().required(),
     payload: Joi.object().keys({
       id: Joi.string().required(),
-      typeId: Joi.string(),
+      typeId: Joi.string().required(),
+      trackId: Joi.string().required(),
       legacy: Joi.object().keys({
         track: Joi.string().required(),
         reviewType: Joi.string().required(),
@@ -285,6 +300,11 @@ processCreate.schema = {
         directProjectId: Joi.number(),
         forumId: Joi.number().integer().positive()
       }).unknown(true),
+      task: Joi.object().keys({
+        isTask: Joi.boolean().default(false),
+        isAssigned: Joi.boolean().default(false),
+        memberId: Joi.string().allow(null)
+      }),
       billingAccountId: Joi.number(),
       name: Joi.string().required(),
       description: Joi.string(),
@@ -303,7 +323,8 @@ processCreate.schema = {
       projectId: Joi.number().integer().positive().required(),
       copilotId: Joi.number().integer().positive().optional(),
       status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required(),
-      startDate: Joi.date(),
+      groups: Joi.array().items(Joi.string()),
+      startDate: Joi.date()
     }).unknown(true).required()
   }).required()
 }
@@ -343,6 +364,7 @@ async function processUpdate (message) {
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
+
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
 
     if (message.payload.status) {
@@ -355,8 +377,8 @@ async function processUpdate (message) {
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         const challengeUuid = message.payload.id
         const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (_.values(config.TASK_TYPE_IDS).includes(v5Challenge.body.typeId)) {
-          logger.info('Challenge type is TASK')
+        if (v5Challenge.body.task.isTask) {
+          logger.info('Challenge is a TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
           }
@@ -364,7 +386,7 @@ async function processUpdate (message) {
           logger.info(`Will close the challenge with ID ${message.payload.legacyId}. Winner ${winnerId}!`)
           await closeChallenge(message.payload.legacyId, winnerId)
         } else {
-          logger.info(`Challenge type is ${v5Challenge.body.typeId}.. Skip closing challenge...`)
+          logger.info('Challenge type is not a task.. Skip closing challenge...')
         }
       }
     }
@@ -397,11 +419,16 @@ processUpdate.schema = {
         reviewType: Joi.string().required(),
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
-        forumId: Joi.number().integer().positive(),
-        informixModified: Joi.string()
+        forumId: Joi.number().integer().positive()
       }).unknown(true),
+      task: Joi.object().keys({
+        isTask: Joi.boolean().default(false),
+        isAssigned: Joi.boolean().default(false),
+        memberId: Joi.string().allow(null)
+      }),
       billingAccountId: Joi.number(),
-      typeId: Joi.string(),
+      typeId: Joi.string().required(),
+      trackId: Joi.string().required(),
       name: Joi.string(),
       description: Joi.string(),
       privateDescription: Joi.string(),
@@ -417,6 +444,7 @@ processUpdate.schema = {
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
       projectId: Joi.number().integer().positive().allow(null),
+      groups: Joi.array().items(Joi.string()),
       startDate: Joi.date()
     }).unknown(true).required()
   }).required()
@@ -427,4 +455,4 @@ module.exports = {
   processUpdate
 }
 
-logger.buildService(module.exports)
+// logger.buildService(module.exports)
