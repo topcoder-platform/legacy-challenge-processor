@@ -32,6 +32,7 @@
     "showdown": "^1.9.1",
     "superagent": "^5.2.2",
     "tc-core-library-js": "github:appirio-tech/tc-core-library-js.git#v2.6.4",
+    "informix-wrapper": "git+https://github.com/appirio-tech/informix-wrapper.git#less-logs",
     "topcoder-bus-api-wrapper": "topcoder-platform/tc-bus-api-wrapper.git",
     "topcoder-healthcheck-dropin": "^1.0.3",
     "winston": "^3.2.1"
