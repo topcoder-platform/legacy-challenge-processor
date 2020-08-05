@@ -47,4 +47,4 @@ RUN echo "sqlexec 2021/tcp" >> /etc/services
 COPY . /app
 WORKDIR /app
 RUN rm -rf node_modules && npm --unsafe-perm install
-ENTRYPOINT ["npm", "start"]
+ENTRYPOINT ["npm"]
