@@ -32,7 +32,7 @@
     "q": "^1.5.1",
     "showdown": "^1.9.1",
     "superagent": "^5.3.1",
-    "topcoder-bus-api-wrapper": "topcoder-platform/tc-bus-api-wrapper.git",
+    "topcoder-bus-api-wrapper": "git+https://github.com/topcoder-platform/tc-bus-api-wrapper.git",
     "tc-core-library-js": "github:appirio-tech/tc-core-library-js.git#v2.6.4",
     "informix-wrapper": "git+https://github.com/appirio-tech/informix-wrapper.git#less-logs",
     "topcoder-healthcheck-dropin": "^1.0.3",
