@@ -231,6 +231,12 @@ async function parsePayload (payload, m2mToken, isCreated = true, existingV4Chal
       }
       data.groupsToBeAdded = _.difference(newGroups, oldGroups)
       data.groupsToBeDeleted = _.difference(oldGroups, newGroups)
+      if (data.groupsToBeAdded.length > 0) {
+        logger.debug(`parsePayload :: Adding Groups ${JSON.stringify(data.groupsToBeAdded)}`)
+      }
+      if (data.groupsToBeDeleted.length > 0) {
+        logger.debug(`parsePayload :: Deleting Groups ${JSON.stringify(data.groupsToBeAdded)}`)
+      }
     } else if (existingV4Challenge && existingV4Challenge.groupIds && existingV4Challenge.groupIds.length > 0) {
       data.groupsToBeDeleted = _.map(existingV4Challenge.groupIds, g => _.toString(g))
     }
