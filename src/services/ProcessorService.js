@@ -10,6 +10,7 @@ const config = require('config')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
+const groupService = require('./groupsService')
 // TODO: Remove this
 // const showdown = require('showdown')
 // const converter = new showdown.Converter()
@@ -22,6 +23,21 @@ const constants = require('../constants')
 async function getGroup (v5GroupId, m2mToken) {
   const response = await helper.getRequest(`${config.V5_GROUPS_API_URL}/${v5GroupId}`, m2mToken)
   return response.body
+}
+
+/**
+ * Associate challenge groups
+ * @param {Array<String>} toBeAdded the array of groups to be added
+ * @param {Array<String>} toBeDeleted the array of groups to be deleted
+ * @param {String|Number} challengeId the legacy challenge ID
+ */
+async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], challengeId) {
+  for (const group of toBeAdded) {
+    await groupService.addGroupToChallenge(challengeId, group)
+  }
+  for (const group of toBeDeleted) {
+    await groupService.removeGroupFromChallenge(challengeId, group)
+  }
 }
 
 /**
@@ -104,9 +120,10 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
  * @param {Boolean} isCreated flag indicate the DTO is used in creating challenge
+ * @param {Object} existingV4Challenge the existing V4 challenge
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
-async function parsePayload (payload, m2mToken, isCreated = true) {
+async function parsePayload (payload, m2mToken, isCreated = true, existingV4Challenge) {
   try {
     let projectId
     if (_.get(payload, 'legacy.directProjectId')) {
@@ -199,20 +216,23 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.platforms = _.filter(platResult.result.content, e => payload.tags.includes(e.name))
     }
     if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
-      const legacyGroups = []
+      const oldGroups = _.map(_.get(existingV4Challenge, 'groupIds', []), g => _.toString(g))
+      const newGroups = []
+
       for (const group of payload.groups) {
         try {
           const groupInfo = await getGroup(group, m2mToken)
           if (!_.isEmpty(_.get(groupInfo, 'oldId'))) {
-            legacyGroups.push(_.get(groupInfo, 'oldId'))
+            newGroups.push(_.toString(_.get(groupInfo, 'oldId')))
           }
         } catch (e) {
           logger.warn(`Failed to load details for group ${group}`)
         }
       }
-      if (legacyGroups.length > 0) {
-        data.groupIds = legacyGroups
-      }
+      data.groupsToBeAdded = _.difference(newGroups, oldGroups)
+      data.groupsToBeDeleted = _.difference(oldGroups, newGroups)
+    } else if (existingV4Challenge && existingV4Challenge.groupIds && existingV4Challenge.groupIds.length > 0) {
+      data.groupsToBeDeleted = _.map(existingV4Challenge.groupIds, g => _.toString(g))
     }
     return data
   } catch (err) {
@@ -264,7 +284,8 @@ async function processCreate (message) {
 
   logger.debug('processCreate :: beforeTry')
   try {
-    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: saveDraftContestDTO }, m2mToken)
+    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -343,8 +364,6 @@ async function processUpdate (message) {
   }
   const m2mToken = await helper.getM2MToken()
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false)
-  logger.debug('Parsed Payload', saveDraftContestDTO)
   let challenge
   try {
     // ensure challenge existed
@@ -360,12 +379,16 @@ async function processUpdate (message) {
     })
     return
   }
+
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, challenge)
+  logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     if (!challenge) {
       throw new Error(`Could not find challenge ${message.payload.legacyId}`)
     }
 
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
+    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
 
     if (message.payload.status) {
       logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
