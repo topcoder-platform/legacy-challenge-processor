@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
-    "@topcoder-platform/topcoder-bus-api-wrapper": "^1.2.0",
+    "topcoder-bus-api-wrapper": "topcoder-platform/tc-bus-api-wrapper.git",
     "async-mutex": "^0.2.4",
     "bluebird": "^3.7.2",
     "config": "^3.3.1",
