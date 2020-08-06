@@ -3,7 +3,7 @@ set -eo pipefail
 APP_NAME=$1
 UPDATE_CACHE=""
 #docker-compose -f docker/docker-compose.yml build $APP_NAME
-docker build -f docker/ECSDockerfile -t $APP_NAME:latest .
+docker build -f docker/Dockerfile -t $APP_NAME:latest .
 docker create --name app $APP_NAME:latest
 
 if [ -d node_modules ]
