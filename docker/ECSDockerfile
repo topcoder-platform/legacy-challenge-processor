@@ -1,11 +1,5 @@
-FROM node:10.16
-
-RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
-    echo "deb http://ftp.debian.org/debian/ stretch main non-free contrib" >/etc/apt/sources.list && \
-    echo "deb http://security.debian.org/ stretch/updates main contrib non-free" >>/etc/apt/sources.list
-
-RUN apt-get -qq update && \
-    apt-get -qq install -y wget git curl default-jdk
+# Use the base image with Node.js
+FROM node:10.20-jessie
 
 # Copy the current directory into the Docker image
 COPY . /legacy-challenge-processor
