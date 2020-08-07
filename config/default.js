@@ -30,17 +30,17 @@ module.exports = {
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
   INFORMIX: {
-    server: process.env.INFORMIX_SERVER || 'informixoltp_tcp', // informix server
-    database: process.env.INFORMIX_DATABASE || 'tcs_catalog', // informix database
-    host: process.env.INFORMIX_HOST || 'localhost', // host
-    protocol: process.env.INFORMIX_PROTOCOL || 'onsoctcp',
-    port: process.env.INFORMIX_PORT || '2021', // port
-    db_locale: process.env.INFORMIX_DB_LOCALE || 'en_US.57372',
-    user: process.env.INFORMIX_USER || 'informix', // user
-    password: process.env.INFORMIX_PASSWORD || '1nf0rm1x', // password
+    SERVER: process.env.INFORMIX_SERVER || 'informixoltp_tcp', // informix server
+    DATABASE: process.env.INFORMIX_DATABASE || 'tcs_catalog', // informix database
+    HOST: process.env.INFORMIX_HOST || 'localhost', // host
+    PROTOCOL: process.env.INFORMIX_PROTOCOL || 'onsoctcp',
+    PORT: process.env.INFORMIX_PORT || '2021', // port
+    DB_LOCALE: process.env.INFORMIX_DB_LOCALE || 'en_US.57372',
+    USER: process.env.INFORMIX_USER || 'informix', // user
+    PASSWORD: process.env.INFORMIX_PASSWORD || '1nf0rm1x', // password
+    POOL_MAX_SIZE: parseInt(process.env.MAXPOOL, 10) || 60,
     maxsize: parseInt(process.env.MAXSIZE) || 0,
     minpool: parseInt(process.env.MINPOOL, 10) || 1,
-    maxpool: parseInt(process.env.MAXPOOL, 10) || 60,
     idleTimeout: parseInt(process.env.IDLETIMEOUT, 10) || 3600,
     timeout: parseInt(process.env.TIMEOUT, 10) || 30000
   },

@@ -27,7 +27,7 @@
     "config": "^3.3.1",
     "get-parameter-names": "^0.3.0",
     "http-json-response": "^1.0.1",
-    "informix-wrapper": "git+https://github.com/appirio-tech/informix-wrapper.git#less-logs",
+    "ifxnjs": "^10.0.5",
     "lodash": "^4.17.19",
     "no-kafka": "^3.4.3",
     "q": "^1.5.1",
