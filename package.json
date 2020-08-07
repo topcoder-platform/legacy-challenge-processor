@@ -21,7 +21,7 @@
     "standard": "^14.3.4"
   },
   "dependencies": {
-    "@hapi/joi": "^17.1.1",
+    "@hapi/joi": "^15.0.2",
     "async-mutex": "^0.2.4",
     "bluebird": "^3.7.2",
     "config": "^3.3.1",
