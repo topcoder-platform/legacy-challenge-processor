@@ -29,21 +29,26 @@ async function getChallengeEligibilityId (challengeLegacyId) {
   const sql = `SELECT limit 1 * FROM contest_eligibility WHERE contest_id = ${challengeLegacyId}`
   const eligibilityRecord = await execQuery(sql)
   logger.debug(`getChallengeEligibilityId ${sql} - ${JSON.stringify(eligibilityRecord)}`)
-  if (!eligibilityRecord) {
+  if (eligibilityRecord) {
     return eligibilityRecord.contest_eligibility_id
   } else {
     const newRecordObj = await createChallengeEligibilityRecord(challengeLegacyId)
-    return newRecordObj.contest_eligibility_id
+    if (newRecordObj) {
+      const newEligibilityRecord = await execQuery(sql)
+      return newEligibilityRecord[0].contest_eligibility_id
+    } else {
+      logger.error('Could not create Eligibility Record ')
+    }
   }
 }
 
 async function getGroupEligibility (eligibilityId, groupLegacyId) {
   // get group eligibility and return the object
-  const sql = `SELECT * FROM group_contest_eligibility WHERE contest_eligibility_id = ${eligibilityId} AND group_id = ${groupLegacyId}`
+  const sql = `SELECT limit 1 * FROM group_contest_eligibility WHERE contest_eligibility_id = ${eligibilityId} AND group_id = ${groupLegacyId}`
   const obj = await execQuery(sql)
   logger.debug(`getGroupEligibility ${sql} - ${JSON.stringify(obj)}`)
   if (obj) {
-    return obj
+    return obj[0]
   } else {
     logger.debug(`getGroupEligibility ${eligibilityId} ${groupLegacyId} - not found`)
     return null
