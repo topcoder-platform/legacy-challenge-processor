@@ -9,11 +9,7 @@
     "lint:fix": "standard --fix",
     "mock-api": "NODE_ENV=test node test/mock/mock",
     "test": "nyc --reporter=html --reporter=text mocha test/unit/test.js --timeout 20000 --exit",
-    "e2e": "nyc --reporter=html --reporter=text mocha test/e2e/test.js --timeout 20000 --exit",
-    "preinstall": "npx npm-force-resolutions"
-  },
-  "resolutions": {
-    "graceful-fs": "4.2.4"
+    "e2e": "nyc --reporter=html --reporter=text mocha test/e2e/test.js --timeout 20000 --exit"
   },
   "repository": "https://github.com/topcoder-platform/legacy-challenge-processor",
   "author": "TCSCODER",
