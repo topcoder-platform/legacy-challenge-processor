@@ -11,10 +11,10 @@ const logger = require('./logger')
  * @param reject the reject function.
  */
 const createConnection = (database, isWrite, reject) => {
-  logger.debug(`Creating Informix Connection ${JSON.stringify(database)}`)
-  logger.debug(`Settings ${JSON.stringify(_.extend(settings, { database }))}`)
+  // logger.debug(`Creating Informix Connection ${JSON.stringify(database)}`)
+  // logger.debug(`Settings ${JSON.stringify(_.extend(settings, { database }))}`)
   const jdbc = new Wrapper(_.extend(settings, { database }), e => logger.debug)
-  logger.debug(`DB Connection Created ${JSON.stringify(jdbc)}`)
+  // logger.debug(`DB Connection Created ${JSON.stringify(jdbc)}`)
   jdbc.on('error', (err) => {
     if (isWrite) {
       jdbc.endTransaction(err, (error) => {
@@ -26,9 +26,9 @@ const createConnection = (database, isWrite, reject) => {
       reject(err)
     }
   })
-  logger.debug('DB - before return/initialize')
+  // logger.debug('DB - before return/initialize')
   const init = jdbc.initialize()
-  logger.debug(`DB - after return/initialize ${JSON.stringify(init)}`)
+  // logger.debug(`DB - after return/initialize ${JSON.stringify(init)}`)
   return init
 }
 
@@ -110,7 +110,6 @@ const extractInformixTablesInfoAsync = (database) => new Promise((resolve, rejec
  * @param params the sql params.
  */
 const executeQueryAsync = (database, sql, params) => new Promise((resolve, reject) => {
-  // logger.debug(`Execute Query ${JSON.stringify(sql)} params: ${JSON.stringify(params)}`)
   let isWrite = false
   if (sql.trim().toLowerCase().indexOf('insert') === 0 ||
       sql.trim().toLowerCase().indexOf('update') === 0 ||
@@ -118,6 +117,7 @@ const executeQueryAsync = (database, sql, params) => new Promise((resolve, rejec
       sql.trim().toLowerCase().indexOf('create') === 0) {
     isWrite = true
   }
+  logger.debug(`Execute Query ${JSON.stringify(sql)} params: ${JSON.stringify(params)} isWrite: ${isWrite}`)
   const connection = createConnection(database, isWrite, reject)
   connection.connect((error) => {
     if (error) {

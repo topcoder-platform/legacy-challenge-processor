@@ -10,6 +10,7 @@ async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
     logger.info(`Group ${groupLegacyId} already exists for ${challengeLegacyId}`)
     return true
   }
+  logger.info(`No group record found: ${groupLegacyId} does not exist ${challengeLegacyId}`)
   return createGroupEligibilityRecord(eligibilityId, groupLegacyId)
 }
 
@@ -29,8 +30,8 @@ async function getChallengeEligibilityId (challengeLegacyId) {
   const sql = `SELECT limit 1 * FROM contest_eligibility WHERE contest_id = ${challengeLegacyId}`
   const eligibilityRecord = await execQuery(sql)
   logger.debug(`getChallengeEligibilityId ${sql} - ${JSON.stringify(eligibilityRecord)}`)
-  if (eligibilityRecord) {
-    return eligibilityRecord.contest_eligibility_id
+  if (eligibilityRecord && eligibilityRecord.length > 0) {
+    return eligibilityRecord[0].contest_eligibility_id
   } else {
     const newRecordObj = await createChallengeEligibilityRecord(challengeLegacyId)
     if (newRecordObj) {
