@@ -36,6 +36,7 @@ async function getChallengeEligibilityId (challengeLegacyId) {
     const newRecordObj = await createChallengeEligibilityRecord(challengeLegacyId)
     if (newRecordObj) {
       const newEligibilityRecord = await execQuery(sql)
+      logger.debug(`New Eligibility Record: ${JSON.stringify(newEligibilityRecord)}`)
       return newEligibilityRecord[0].contest_eligibility_id
     } else {
       logger.error('Could not create Eligibility Record ')
