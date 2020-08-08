@@ -9,7 +9,7 @@ const QUERY_INSERT_GROUP_CONTEST_ELIGIBILITY = 'INSERT INTO group_contest_eligib
 const QUERY_DELETE_GROUP_CONTEST_ELIGIBILITY = 'DELETE FROM group_contest_eligibility WHERE contest_eligibility_id = ? AND group_id = ?'
 const QUERY_DELETE_CONTEST_ELIGIBILITY = 'DELETE FROM contest_eligibility WHERE contest_eligibility_id = ?'
 
-// const QUERY_GET_GROUPS_COUNT = 'SELECT limit 1 * FROM group_contest_eligibility WHERE contest_eligibility_id = ?'
+const QUERY_GET_GROUPS_COUNT = 'SELECT count(*) as groups_count FROM group_contest_eligibility WHERE contest_eligibility_id = ?'
 
 /**
  * Prepare Informix statement
@@ -21,22 +21,6 @@ async function prepare (connection, sql) {
   const stmt = await connection.prepareAsync(sql)
   return Promise.promisifyAll(stmt)
 }
-
-// /**
-//  * Insert a record in specified table
-//  * @param {Object} connection the Informix connection
-//  * @param {String} tableName the table name
-//  * @param {Object} columnValues the column key-value map
-//  */
-// async function insertRecord (connection, tableName, columnValues) {
-//   const normalizedColumnValues = _.omitBy(columnValues, _.isNil)
-//   const keys = Object.keys(normalizedColumnValues)
-//   const values = _.fill(Array(keys.length), '?')
-
-//   const insertRecordStmt = await prepare(connection, `insert into ${tableName} (${keys.join(', ')}) values (${values.join(', ')})`)
-
-//   await insertRecordStmt.executeAsync(Object.values(normalizedColumnValues))
-// }
 
 async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
   const connection = await helper.getInformixConnection()
@@ -75,8 +59,10 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
     if (groupEligibilityId) {
       await deleteGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
-      // TODO - check if there are any groups, if not, delete the eligibility record
-      // await deleteEligibilityRecord(connection, eligibilityId)
+      const groupsCount = await getCountOfGroupsInEligibilityRecord(connection, eligibilityId)
+      if (groupsCount <= 0) {
+        await deleteEligibilityRecord(connection, eligibilityId)
+      }
     }
 
     await connection.commitTransactionAsync()
@@ -141,7 +127,12 @@ async function deleteEligibilityRecord (connection, eligibilityId) {
   return result[0]
 }
 
-
+async function getCountOfGroupsInEligibilityRecord (connection, eligibilityId) {
+  const query = await prepare(connection, QUERY_GET_GROUPS_COUNT)
+  const result = await query.executeAsync([eligibilityId])
+  logger.debug(`getCountOfGroupsInEligibilityRecord ${JSON.stringify(result)}`)
+  return result[0].groups_count || 0
+}
 
 module.exports = {
   addGroupToChallenge,
