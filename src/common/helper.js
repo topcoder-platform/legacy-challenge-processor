@@ -2,6 +2,8 @@
  * Contains generic helper methods
  */
 
+const elasticsearch = require('elasticsearch')
+const AWS = require('aws-sdk')
 const _ = require('lodash')
 const config = require('config')
 const ifxnjs = require('ifxnjs')
@@ -15,8 +17,40 @@ const Pool = ifxnjs.Pool
 const pool = Promise.promisifyAll(new Pool())
 pool.setMaxPoolSize(config.get('INFORMIX.POOL_MAX_SIZE'))
 
+AWS.config.region = config.get('V4_ES.AWS_REGION')
+// ES Client
+let esClient
+
 // Bus API Client
 let busApiClient
+
+/**
+ * Get ES Client
+ * @return {Object} Elastic Host Client Instance
+ */
+function getESClient () {
+  const esHost = config.get('V4_ES.HOST')
+  if (!esClient) {
+    // AWS ES configuration is different from other providers
+    if (/.*amazonaws.*/.test(esHost)) {
+      esClient = elasticsearch.Client({
+        apiVersion: config.get('V4_ES.API_VERSION'),
+        hosts: esHost,
+        connectionClass: require('http-aws-es'), // eslint-disable-line global-require
+        amazonES: {
+          region: config.get('V4_ES.AWS_REGION'),
+          credentials: new AWS.EnvironmentCredentials('AWS')
+        }
+      })
+    } else {
+      esClient = new elasticsearch.Client({
+        apiVersion: config.get('V4_ES.API_VERSION'),
+        hosts: esHost
+      })
+    }
+  }
+  return esClient
+}
 
 /**
  * Get Informix connection using the configured parameters
@@ -158,5 +192,6 @@ module.exports = {
   getRequest,
   putRequest,
   postRequest,
-  postBusEvent
+  postBusEvent,
+  getESClient
 }

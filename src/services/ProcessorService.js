@@ -120,7 +120,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
  * @param {Boolean} isCreated flag indicate the DTO is used in creating challenge
- * @param {Object} existingV4Challenge the existing V4 challenge
+ * @param {Object} existingV4Challenge the existing V4 challenge from ES
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
 async function parsePayload (payload, m2mToken, isCreated = true, existingV4Challenge) {
@@ -374,6 +374,9 @@ async function processUpdate (message) {
   try {
     // ensure challenge existed
     challenge = await getChallengeById(m2mToken, message.payload.legacyId)
+    if (!challenge) {
+      throw new Error(`Could not find challenge ${message.payload.legacyId}`)
+    }
   } catch (e) {
     // postponne kafka event
     logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
@@ -386,13 +389,46 @@ async function processUpdate (message) {
     return
   }
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, challenge)
+  let challengeV4FromEs
+  try {
+    // Search with constructed query
+    const esQuery = {
+      index: config.get('ES.ES_INDEX'),
+      type: config.get('ES.ES_TYPE'),
+      size: 1,
+      from: 0,
+      body: {
+        query: {
+          match_phrase: {
+            _id: message.payload.legacyId
+          }
+        }
+      }
+    }
+    const docs = await helper.getESClient().search(esQuery)
+    // Extract data from hits
+    if (docs.hits.total === 0) {
+      throw new Error('Challenge does not exist yet on ES')
+    }
+    challengeV4FromEs = _.map(docs.hits.hits, item => item._source)[0]
+    if (!challengeV4FromEs) {
+      throw new Error(`Could not find challenge ${message.payload.legacyId} on ES`)
+    }
+  } catch (e) {
+    // postponne kafka event
+    logger.info('Challenge does not exist yet on ES. Will post the same message back to the bus API')
+    await new Promise((resolve) => {
+      setTimeout(async () => {
+        await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
+        resolve()
+      }, config.RETRY_TIMEOUT)
+    })
+    return
+  }
+
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, challengeV4FromEs)
   logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
-    if (!challenge) {
-      throw new Error(`Could not find challenge ${message.payload.legacyId}`)
-    }
-
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
 
