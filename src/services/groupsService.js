@@ -9,6 +9,8 @@ const QUERY_INSERT_GROUP_CONTEST_ELIGIBILITY = 'INSERT INTO group_contest_eligib
 const QUERY_DELETE_GROUP_CONTEST_ELIGIBILITY = 'DELETE FROM group_contest_eligibility WHERE contest_eligibility_id = ? AND group_id = ?'
 const QUERY_DELETE_CONTEST_ELIGIBILITY = 'DELETE FROM contest_eligibility WHERE contest_eligibility_id = ?'
 
+// const QUERY_GET_GROUPS_COUNT = 'SELECT limit 1 * FROM group_contest_eligibility WHERE contest_eligibility_id = ?'
+
 /**
  * Prepare Informix statement
  * @param {Object} connection the Informix connection
@@ -73,7 +75,8 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
     if (groupEligibilityId) {
       await deleteGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
-      await deleteEligibilityRecord(connection, eligibilityId)
+      // TODO - check if there are any groups, if not, delete the eligibility record
+      // await deleteEligibilityRecord(connection, eligibilityId)
     }
 
     await connection.commitTransactionAsync()
@@ -137,6 +140,8 @@ async function deleteEligibilityRecord (connection, eligibilityId) {
   logger.debug(`deleteEligibilityRecord ${JSON.stringify(result)}`)
   return result[0]
 }
+
+
 
 module.exports = {
   addGroupToChallenge,
