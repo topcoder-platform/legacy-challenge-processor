@@ -390,24 +390,32 @@ async function processUpdate (message) {
   }
 
   let challengeV4FromEs
-  try {
-    // Search with constructed query
-    const esQuery = {
-      index: config.get('V4_ES.CHALLENGE_ES_INDEX'),
-      type: config.get('V4_ES.CHALLENGE_ES_TYPE'),
-      size: 1,
-      from: 0,
-      body: {
-        query: {
-          match_phrase: {
-            _id: message.payload.legacyId
-          }
+  let esClient
+  const esQuery = {
+    index: config.get('V4_ES.CHALLENGE_ES_INDEX'),
+    type: config.get('V4_ES.CHALLENGE_ES_TYPE'),
+    size: 1,
+    from: 0,
+    body: {
+      query: {
+        match_phrase: {
+          _id: message.payload.legacyId
         }
       }
     }
-    logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
-    const esClient = helper.getESClient()
+  }
+
+  try {
+    logger.debug('Getting ES Client')
+    esClient = helper.getESClient()
     logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
+  } catch (e) {
+    logger.error(`Error getting ES Client ${e}`)
+  }
+
+  try {
+    // Search with constructed query
+    logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
     const docs = await esClient.search(esQuery)
     logger.debug(`Docs: ${JSON.stringify(docs)}`)
     // Extract data from hits
@@ -420,7 +428,7 @@ async function processUpdate (message) {
     }
   } catch (e) {
     // postponne kafka event
-    logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e} ${JSON.stringify(e)}`)
+    logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e}`)
     await new Promise((resolve) => {
       setTimeout(async () => {
         await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)

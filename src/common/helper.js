@@ -30,6 +30,7 @@ let busApiClient
  * @return {Object} Elastic Host Client Instance
  */
 function getESClient () {
+  logger.debug('getES Client Called')
   const esHost = config.get('V4_ES.HOST')
   if (esClient) {
     logger.debug(`Cached ES Client: ${JSON.stringify(esClient)}`)
