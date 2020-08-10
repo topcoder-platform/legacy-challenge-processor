@@ -393,8 +393,8 @@ async function processUpdate (message) {
   try {
     // Search with constructed query
     const esQuery = {
-      index: config.get('ES.ES_INDEX'),
-      type: config.get('ES.ES_TYPE'),
+      index: config.get('V4_ES.CHALLENGE_ES_INDEX'),
+      type: config.get('V4_ES.CHALLENGE_ES_TYPE'),
       size: 1,
       from: 0,
       body: {
