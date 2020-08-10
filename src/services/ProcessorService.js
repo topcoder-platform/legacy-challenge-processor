@@ -405,8 +405,9 @@ async function processUpdate (message) {
         }
       }
     }
-    logger.debug(`Looking Up Challenge in V4 ${JSON.stringify(esQuery)}`)
+    logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
     const docs = await helper.getESClient().search(esQuery)
+    logger.debug(`Docs: ${JSON.stringify(docs)}`)
     // Extract data from hits
     if (docs.hits.total === 0) {
       throw new Error('Challenge does not exist yet on ES')
