@@ -31,6 +31,7 @@
     "elasticsearch": "^16.7.1",
     "get-parameter-names": "^0.3.0",
     "gulp": "^4.0.2",
+    "http-aws-es": "^6.0.0",
     "http-json-response": "^1.0.1",
     "ifxnjs": "^10.0.5",
     "lodash": "^4.17.19",
