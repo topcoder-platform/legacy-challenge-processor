@@ -1,8 +1,9 @@
 version: '3'
 services:
-  legacy-submission-processor:
+  legacy-challenge-processor:
     image: legacy-challenge-processor:latest
+    container_name: legacy-challenge-processor
     build:
       context: ../
       dockerfile: docker/Dockerfile
-    network_mode: "host"
+    command: run start
