@@ -7,6 +7,7 @@ const AWS = require('aws-sdk')
 const _ = require('lodash')
 const config = require('config')
 const ifxnjs = require('ifxnjs')
+const logger = require('./logger')
 const request = require('superagent')
 const m2mAuth = require('tc-core-library-js').auth.m2m
 const busApi = require('@topcoder-platform/topcoder-bus-api-wrapper')
@@ -49,6 +50,16 @@ function getESClient () {
       })
     }
   }
+  logger.debug(`ES Client Config: ${JSON.stringify({
+    apiVersion: config.get('V4_ES.API_VERSION'),
+    hosts: esHost,
+    connectionClass: require('http-aws-es'), // eslint-disable-line global-require
+    amazonES: {
+      region: config.get('V4_ES.AWS_REGION'),
+      credentials: new AWS.EnvironmentCredentials('AWS')
+    }
+  })}`)
+  logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
   return esClient
 }
 
