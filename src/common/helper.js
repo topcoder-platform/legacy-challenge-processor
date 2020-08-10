@@ -31,25 +31,29 @@ let busApiClient
  */
 function getESClient () {
   const esHost = config.get('V4_ES.HOST')
-  if (!esClient) {
-    // AWS ES configuration is different from other providers
-    if (/.*amazonaws.*/.test(esHost)) {
-      esClient = elasticsearch.Client({
-        apiVersion: config.get('V4_ES.API_VERSION'),
-        hosts: esHost,
-        connectionClass: require('http-aws-es'), // eslint-disable-line global-require
-        amazonES: {
-          region: config.get('V4_ES.AWS_REGION'),
-          credentials: new AWS.EnvironmentCredentials('AWS')
-        }
-      })
-    } else {
-      esClient = new elasticsearch.Client({
-        apiVersion: config.get('V4_ES.API_VERSION'),
-        hosts: esHost
-      })
-    }
+  if (esClient) {
+    logger.debug(`Cached ES Client: ${JSON.stringify(esClient)}`)
+    return esClient
   }
+
+  // AWS ES configuration is different from other providers
+  if (/.*amazonaws.*/.test(esHost)) {
+    esClient = elasticsearch.Client({
+      apiVersion: config.get('V4_ES.API_VERSION'),
+      hosts: esHost,
+      connectionClass: require('http-aws-es'), // eslint-disable-line global-require
+      amazonES: {
+        region: config.get('V4_ES.AWS_REGION'),
+        credentials: new AWS.EnvironmentCredentials('AWS')
+      }
+    })
+  } else {
+    esClient = new elasticsearch.Client({
+      apiVersion: config.get('V4_ES.API_VERSION'),
+      hosts: esHost
+    })
+  }
+
   logger.debug(`ES Client Config: ${JSON.stringify({
     apiVersion: config.get('V4_ES.API_VERSION'),
     hosts: esHost,
