@@ -418,7 +418,7 @@ async function processUpdate (message) {
     }
   } catch (e) {
     // postponne kafka event
-    logger.info('Challenge does not exist yet on ES. Will post the same message back to the bus API')
+    logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${JSON.stringify(e)}`)
     await new Promise((resolve) => {
       setTimeout(async () => {
         await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
