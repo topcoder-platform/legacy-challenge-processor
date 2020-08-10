@@ -406,7 +406,9 @@ async function processUpdate (message) {
       }
     }
     logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
-    const docs = await helper.getESClient().search(esQuery)
+    const esClient = helper.getESClient()
+    logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
+    const docs = await esClient.search(esQuery)
     logger.debug(`Docs: ${JSON.stringify(docs)}`)
     // Extract data from hits
     if (docs.hits.total === 0) {
@@ -418,7 +420,7 @@ async function processUpdate (message) {
     }
   } catch (e) {
     // postponne kafka event
-    logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${JSON.stringify(e)}`)
+    logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e} ${JSON.stringify(e)}`)
     await new Promise((resolve) => {
       setTimeout(async () => {
         await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
