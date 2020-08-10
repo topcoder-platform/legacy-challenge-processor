@@ -405,6 +405,7 @@ async function processUpdate (message) {
         }
       }
     }
+    logger.debug(`Looking Up Challenge in V4 ${JSON.stringify(esQuery)}`)
     const docs = await helper.getESClient().search(esQuery)
     // Extract data from hits
     if (docs.hits.total === 0) {
