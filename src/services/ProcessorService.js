@@ -406,9 +406,9 @@ async function processUpdate (message) {
   }
 
   try {
-    logger.debug('Getting ES Client')
+    // logger.debug('Getting ES Client')
     esClient = helper.getESClient()
-    logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
+    // logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
   } catch (e) {
     logger.error(`Error getting ES Client ${e}`)
   }

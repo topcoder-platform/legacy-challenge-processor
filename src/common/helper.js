@@ -33,14 +33,15 @@ function getESClient () {
   logger.debug('getES Client Called')
   const esHost = config.get('V4_ES.HOST')
   if (esClient) {
-    logger.debug(`Cached ES Client: ${JSON.stringify(esClient)}`)
+    // logger.debug(`Cached ES Client: ${JSON.stringify(esClient)}`)
     return esClient
   } else {
-    logger.debug(`No ES Client, building.... ${esClient}`)
+    // logger.debug(`No ES Client, building.... ${esClient}`)
   }
 
   try {
     // AWS ES configuration is different from other providers
+    logger.debug('getES Client in try')
     if (/.*amazonaws.*/.test(esHost)) {
       esClient = elasticsearch.Client({
         apiVersion: config.get('V4_ES.API_VERSION'),
@@ -57,7 +58,7 @@ function getESClient () {
         hosts: esHost
       })
     }
-    logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
+    // logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
   } catch (e) {
     logger.error(`Get ES Client Error ${e}`)
   }
