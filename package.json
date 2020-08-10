@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@hapi/joi": "^15.0.2",
+    "@topcoder-platform/topcoder-bus-api-wrapper": "^1.2.0",
+    "@topcoder-platform/topcoder-healthcheck-dropin": "^1.1.0",
     "async-mutex": "^0.2.4",
     "aws-sdk": "^2.729.0",
     "bluebird": "^3.7.2",
@@ -37,8 +39,6 @@
     "showdown": "^1.9.1",
     "superagent": "^6.0.0",
     "tc-core-library-js": "github:appirio-tech/tc-core-library-js.git#v2.6.4",
-    "topcoder-bus-api-wrapper": "topcoder-platform/tc-bus-api-wrapper.git",
-    "topcoder-healthcheck-dropin": "^1.0.3",
     "underscore": "^1.10.2",
     "winston": "^3.3.3"
   },

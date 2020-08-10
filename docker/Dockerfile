@@ -41,7 +41,6 @@ RUN echo "sqlexec 2021/tcp" >> /etc/services
 COPY . /legacy-challenge-processor
 
 WORKDIR /legacy-challenge-processor
-RUN npm i --unsafe-perm topcoder-bus-api-wrapper -g
 RUN rm -rf node_modules && npm install --unsafe-perm
 
 ENTRYPOINT [ "npm", "start"]

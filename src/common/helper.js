@@ -9,7 +9,7 @@ const config = require('config')
 const ifxnjs = require('ifxnjs')
 const request = require('superagent')
 const m2mAuth = require('tc-core-library-js').auth.m2m
-const busApi = require('topcoder-bus-api-wrapper')
+const busApi = require('@topcoder-platform/topcoder-bus-api-wrapper')
 const constants = require('../constants')
 const m2m = m2mAuth(_.pick(config, ['AUTH0_URL', 'AUTH0_AUDIENCE', 'TOKEN_CACHE_TIME', 'AUTH0_PROXY_SERVER_URL']))
 
