@@ -13,6 +13,8 @@ RUN apt-get -qq update && apt-get -qq install -y \
 RUN wget -q -O node8.tar.xz https://nodejs.org/dist/v8.11.3/node-v8.11.3-linux-x64.tar.xz \
   && tar xfJ node8.tar.xz && rm -rf node8.tar.xz
 
+RUN npm i topcoder-bus-api-wrapper -g
+
 ENV SERVERNAME=$servername
 
 COPY docker/esql /opt/ibm/informix/bin/
