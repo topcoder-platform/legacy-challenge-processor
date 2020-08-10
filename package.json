@@ -43,7 +43,7 @@
     "winston": "^3.3.3"
   },
   "engines": {
-    "node": "8.x"
+    "node": "10.x"
   },
   "standard": {
     "env": [
