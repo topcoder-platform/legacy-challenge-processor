@@ -44,17 +44,6 @@ module.exports = {
     idleTimeout: parseInt(process.env.IDLETIMEOUT, 10) || 3600,
     timeout: parseInt(process.env.TIMEOUT, 10) || 30000
   },
-
-  V4_ES: {
-    // above AWS_REGION is used if we use AWS ES
-    AWS_REGION: process.env.AWS_REGION || 'ap-northeast-1',
-    HOST: process.env.V4_ES_HOST,
-    API_VERSION: process.env.V4_ES_API_VERSION || '6.8',
-    CHALLENGE_ES_INDEX: process.env.CHALLENGE_ES_INDEX || 'challengeslisting', // challenge es index
-    CHALLENGE_ES_TYPE: process.env.CHALLENGE_ES_TYPE || 'challenges', // challenge es type
-    ES_REFRESH: process.env.ES_REFRESH || 'true'
-  },
-
   // Topcoder APIs
   V5_CHALLENGE_API_URL: process.env.V5_CHALLENGE_API_URL || 'http://localhost:4000/v5/challenges',
   V5_CHALLENGE_TYPE_API_URL: process.env.V5_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v5/challenge-types',

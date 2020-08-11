@@ -2,12 +2,9 @@
  * Contains generic helper methods
  */
 
-const elasticsearch = require('elasticsearch')
-const AWS = require('aws-sdk')
 const _ = require('lodash')
 const config = require('config')
 const ifxnjs = require('ifxnjs')
-const logger = require('./logger')
 const request = require('superagent')
 const m2mAuth = require('tc-core-library-js').auth.m2m
 const busApi = require('@topcoder-platform/topcoder-bus-api-wrapper')
@@ -18,52 +15,8 @@ const Pool = ifxnjs.Pool
 const pool = Promise.promisifyAll(new Pool())
 pool.setMaxPoolSize(config.get('INFORMIX.POOL_MAX_SIZE'))
 
-AWS.config.region = config.get('V4_ES.AWS_REGION')
-// ES Client
-let esClient
-
 // Bus API Client
 let busApiClient
-
-/**
- * Get ES Client
- * @return {Object} Elastic Host Client Instance
- */
-function getESClient () {
-  logger.debug('getES Client Called')
-  const esHost = config.get('V4_ES.HOST')
-  if (esClient) {
-    // logger.debug(`Cached ES Client: ${JSON.stringify(esClient)}`)
-    return esClient
-  } else {
-    // logger.debug(`No ES Client, building.... ${esClient}`)
-  }
-
-  try {
-    // AWS ES configuration is different from other providers
-    logger.debug('getES Client in try')
-    if (/.*amazonaws.*/.test(esHost)) {
-      esClient = elasticsearch.Client({
-        apiVersion: config.get('V4_ES.API_VERSION'),
-        hosts: esHost,
-        connectionClass: require('http-aws-es'), // eslint-disable-line global-require
-        amazonES: {
-          region: config.get('V4_ES.AWS_REGION'),
-          credentials: new AWS.EnvironmentCredentials('AWS')
-        }
-      })
-    } else {
-      esClient = new elasticsearch.Client({
-        apiVersion: config.get('V4_ES.API_VERSION'),
-        hosts: esHost
-      })
-    }
-    // logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
-  } catch (e) {
-    logger.error(`Get ES Client Error ${e}`)
-  }
-  return esClient
-}
 
 /**
  * Get Informix connection using the configured parameters
@@ -205,6 +158,5 @@ module.exports = {
   getRequest,
   putRequest,
   postRequest,
-  postBusEvent,
-  getESClient
+  postBusEvent
 }

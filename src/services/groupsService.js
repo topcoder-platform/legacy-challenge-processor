@@ -120,12 +120,7 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
   logger.info(`getChallengeEligibilityId Query: ${util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId)}`)
   const result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
   logger.info(`getChallengeEligibilityId Result: ${JSON.stringify(result)}`)
-  // if (result.length === 0) {
-  //   logger.debug(`getChallengeEligibility not found, creating ${challengeLegacyId}`)
-  //   await createChallengeEligibilityRecord(connection, challengeLegacyId)
-  //   result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
-  // }
-  return result[0].contest_eligibility_id || false
+  return (result && result[0]) ? result[0].contest_eligibility_id : false
 }
 
 /**

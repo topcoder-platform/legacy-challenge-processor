@@ -389,50 +389,8 @@ async function processUpdate (message) {
     return
   }
 
-  // let challengeV4FromEs
-  // let esClient
-  // const esQuery = {
-  //   index: config.get('V4_ES.CHALLENGE_ES_INDEX'),
-  //   type: config.get('V4_ES.CHALLENGE_ES_TYPE'),
-  //   size: 1,
-  //   from: 0,
-  //   body: {
-  //     _source: ['groupIds'],
-  //     query: {
-  //       match_phrase: {
-  //         _id: message.payload.legacyId
-  //       }
-  //     }
-  //   }
-  // }
-
   const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
   logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
-  // try {
-  //   // Search with constructed query
-  //   // logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
-  //   esClient = helper.getESClient()
-  //   const docs = await esClient.search(esQuery)
-  //   logger.debug(`Docs: ${JSON.stringify(docs)}`)
-  //   // Extract data from hits
-  //   if (docs.hits.total === 0) {
-  //     throw new Error('Challenge does not exist yet on ES')
-  //   }
-  //   challengeV4FromEs = _.map(docs.hits.hits, item => item._source)[0]
-  //   if (!challengeV4FromEs) {
-  //     throw new Error(`Could not find challenge ${message.payload.legacyId} on ES`)
-  //   }
-  // } catch (e) {
-  //   // postpone kafka event
-  //   logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e}`)
-  //   await new Promise((resolve) => {
-  //     setTimeout(async () => {
-  //       await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
-  //       resolve()
-  //     }, config.RETRY_TIMEOUT)
-  //   })
-  //   return
-  // }
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   logger.debug('Parsed Payload', saveDraftContestDTO)
