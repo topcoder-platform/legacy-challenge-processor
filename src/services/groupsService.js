@@ -27,14 +27,24 @@ async function prepare (connection, sql) {
 async function getGroupsForChallenge (challengeLegacyId) {
   logger.debug(`Getting Groups for Challenge ${challengeLegacyId}`)
   const connection = await helper.getInformixConnection()
-  const eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId)
-  if (eligibilityId) {
-    const groupIds = await getGroupIdsForEligibilityId(connection, eligibilityId)
-    logger.debug(`Groups Found for ${challengeLegacyId} - ${JSON.stringify(groupIds)}`)
-    return groupIds
+  let groupIds = []
+  try {
+    // await connection.beginTransactionAsync()
+    const eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId)
+    if (eligibilityId) {
+      groupIds = await getGroupIdsForEligibilityId(connection, eligibilityId)
+      logger.debug(`Groups Found for ${challengeLegacyId} - ${JSON.stringify(groupIds)}`)
+    }
+    // logger.debug(`No groups Found for ${challengeLegacyId}`)
+    // await connection.commitTransactionAsync()
+  } catch (e) {
+    logger.error(`Error in 'getGroupsForChallenge' ${e}`)
+    // await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    await connection.closeAsync()
   }
-  logger.debug(`No groups Found for ${challengeLegacyId}`)
-  return []
+  return groupIds
 }
 
 async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
