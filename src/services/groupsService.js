@@ -20,13 +20,13 @@ const QUERY_DELETE_CONTEST_ELIGIBILITY = 'DELETE FROM contest_eligibility WHERE 
  * @return {Object} Informix statement
  */
 async function prepare (connection, sql) {
-  logger.debug(`Preparing SQL ${sql}`)
+  // logger.debug(`Preparing SQL ${sql}`)
   const stmt = await connection.prepareAsync(sql)
   return Promise.promisifyAll(stmt)
 }
 
 async function getGroupsForChallenge (challengeLegacyId) {
-  logger.debug(`Getting Groups for Challenge ${challengeLegacyId}`)
+  // logger.debug(`Getting Groups for Challenge ${challengeLegacyId}`)
   const connection = await helper.getInformixConnection()
   let groupIds = []
   try {
@@ -34,7 +34,7 @@ async function getGroupsForChallenge (challengeLegacyId) {
     const eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId)
     if (eligibilityId) {
       groupIds = await getGroupIdsForEligibilityId(connection, eligibilityId)
-      logger.debug(`Groups Found for ${challengeLegacyId} - ${JSON.stringify(groupIds)}`)
+      // logger.debug(`Groups Found for ${challengeLegacyId} - ${JSON.stringify(groupIds)}`)
     }
     // logger.debug(`No groups Found for ${challengeLegacyId}`)
     // await connection.commitTransactionAsync()
@@ -89,11 +89,11 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
     if (groupEligibilityRecord) {
       await deleteGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
-      logger.debug('Getting Groups Count')
+      // logger.debug('Getting Groups Count')
       const { groupsCount } = await getCountOfGroupsInEligibilityRecord(connection, eligibilityId)
-      logger.debug(`${groupsCount} groups exist`)
+      // logger.debug(`${groupsCount} groups exist`)
       if (groupsCount <= 0) {
-        logger.debug('No groups exist, deleting')
+        logger.debug('No groups exist, deleting eligibility group')
         await deleteEligibilityRecord(connection, eligibilityId)
       }
     }
@@ -117,9 +117,9 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
  */
 async function getChallengeEligibilityId (connection, challengeLegacyId) {
   // get the challenge eligibility record, if one doesn't exist, create it and return the id
-  logger.info(`getChallengeEligibilityId Query: ${util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId)}`)
+  // logger.info(`getChallengeEligibilityId Query: ${util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId)}`)
   const result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
-  logger.info(`getChallengeEligibilityId Result: ${JSON.stringify(result)}`)
+  // logger.info(`getChallengeEligibilityId Result: ${JSON.stringify(result)}`)
   return (result && result[0]) ? result[0].contest_eligibility_id : false
 }
 
@@ -130,9 +130,9 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
  * @returns {Object} DB Result
  */
 async function groupEligbilityExists (connection, eligibilityId, groupLegacyId) {
-  logger.debug(`groupEligibiltyExists query ${util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId)}`)
+  // logger.debug(`groupEligibiltyExists query ${util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId)}`)
   const result = await connection.queryAsync(util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId))
-  logger.debug(`groupEligibiltyExists result ${JSON.stringify(result)} ${JSON.stringify(result[0])}`)
+  // logger.debug(`groupEligibiltyExists result ${JSON.stringify(result)} ${JSON.stringify(result[0])}`)
   return (result && result[0]) || false
 }
 
@@ -181,7 +181,7 @@ async function getCountOfGroupsInEligibilityRecord (connection, eligibilityId) {
 
 async function getGroupIdsForEligibilityId (connection, eligibilityId) {
   const query = util.format(QUERY_GET_GROUPS, eligibilityId)
-  logger.debug(`getGroupIdsForEligibilityId ${query}`)
+  // logger.debug(`getGroupIdsForEligibilityId ${query}`)
   const result = await connection.queryAsync(query)
   return _.map(result, r => r.group_id)
 }

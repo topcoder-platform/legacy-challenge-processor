@@ -393,7 +393,7 @@ async function processUpdate (message) {
   logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
-  logger.debug('Parsed Payload', saveDraftContestDTO)
+  // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
