@@ -80,11 +80,12 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
 async function getChallengeEligibilityId (connection, challengeLegacyId) {
   // get the challenge eligibility record, if one doesn't exist, create it and return the id
-  const result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
+  let result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
   logger.info(`getChallengeEligibilityId Result ${JSON.stringify(result)}`)
   if (result.length === 0) {
     logger.debug(`getChallengeEligibility not found, creating ${challengeLegacyId}`)
-    return createChallengeEligibilityRecord(connection, challengeLegacyId)
+    await createChallengeEligibilityRecord(connection, challengeLegacyId)
+    result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
   }
   return { eligibilityId: result[0].contest_eligibility_id }
 }
@@ -95,21 +96,21 @@ async function getGroupEligibility (connection, eligibilityId, groupLegacyId) {
     logger.debug(`getGroupEligibility not found, creating ${eligibilityId} ${groupLegacyId}`)
     return createGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
   }
-  return result[0]
+  return result
 }
 
 async function createChallengeEligibilityRecord (connection, challengeLegacyId) {
   const query = await prepare(connection, QUERY_INSERT_CONTEST_ELIGIBILITY)
   const result = await query.executeAsync([challengeLegacyId])
   logger.debug(`Create Challenge Eligibility Record ${JSON.stringify(result)}`)
-  return result[0].contest_eligibility_id
+  return result
 }
 
 async function createGroupEligibilityRecord (connection, eligibilityId, groupLegacyId) {
   const query = await prepare(connection, QUERY_INSERT_GROUP_CONTEST_ELIGIBILITY)
   const result = await query.executeAsync([eligibilityId, groupLegacyId])
   logger.debug(`Create Group Eligibility Record ${JSON.stringify(result)}`)
-  return result[0]
+  return result
 }
 
 async function deleteGroupEligibilityRecord (connection, eligibilityId, groupLegacyId) {
