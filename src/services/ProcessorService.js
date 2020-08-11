@@ -397,6 +397,7 @@ async function processUpdate (message) {
     size: 1,
     from: 0,
     body: {
+      _source: ['groupIds'],
       query: {
         match_phrase: {
           _id: message.payload.legacyId
@@ -406,16 +407,9 @@ async function processUpdate (message) {
   }
 
   try {
-    // logger.debug('Getting ES Client')
-    esClient = helper.getESClient()
-    // logger.debug(`ES Client: ${JSON.stringify(esClient)}`)
-  } catch (e) {
-    logger.error(`Error getting ES Client ${e}`)
-  }
-
-  try {
     // Search with constructed query
     logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
+    esClient = helper.getESClient()
     const docs = await esClient.search(esQuery)
     logger.debug(`Docs: ${JSON.stringify(docs)}`)
     // Extract data from hits
@@ -427,7 +421,7 @@ async function processUpdate (message) {
       throw new Error(`Could not find challenge ${message.payload.legacyId} on ES`)
     }
   } catch (e) {
-    // postponne kafka event
+    // postpone kafka event
     logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e}`)
     await new Promise((resolve) => {
       setTimeout(async () => {

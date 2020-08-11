@@ -50,7 +50,7 @@ module.exports = {
     AWS_REGION: process.env.AWS_REGION || 'ap-northeast-1',
     HOST: process.env.V4_ES_HOST,
     API_VERSION: process.env.V4_ES_API_VERSION || '6.8',
-    CHALLENGE_ES_INDEX: process.env.CHALLENGE_ES_INDEX || 'challengesdetail', // challenge es index
+    CHALLENGE_ES_INDEX: process.env.CHALLENGE_ES_INDEX || 'challengeslisting', // challenge es index
     CHALLENGE_ES_TYPE: process.env.CHALLENGE_ES_TYPE || 'challenges', // challenge es type
     ES_REFRESH: process.env.ES_REFRESH || 'true'
   },
