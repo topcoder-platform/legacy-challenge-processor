@@ -20,6 +20,7 @@ const QUERY_DELETE_CONTEST_ELIGIBILITY = 'DELETE FROM contest_eligibility WHERE 
  * @return {Object} Informix statement
  */
 async function prepare (connection, sql) {
+  logger.debug(`Preparing SQL ${sql}`)
   const stmt = await connection.prepareAsync(sql)
   return Promise.promisifyAll(stmt)
 }
@@ -116,8 +117,9 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
  */
 async function getChallengeEligibilityId (connection, challengeLegacyId) {
   // get the challenge eligibility record, if one doesn't exist, create it and return the id
+  logger.info(`getChallengeEligibilityId Query: ${util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId)}`)
   const result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
-  logger.info(`getChallengeEligibilityId Result Query: ${util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId)} result ${JSON.stringify(result)}`)
+  logger.info(`getChallengeEligibilityId Result: ${JSON.stringify(result)}`)
   // if (result.length === 0) {
   //   logger.debug(`getChallengeEligibility not found, creating ${challengeLegacyId}`)
   //   await createChallengeEligibilityRecord(connection, challengeLegacyId)
