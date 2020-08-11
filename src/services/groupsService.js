@@ -89,9 +89,9 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
     if (groupEligibilityRecord) {
       await deleteGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
-      // logger.debug('Getting Groups Count')
+      logger.debug('Getting Groups Count')
       const { groupsCount } = await getCountOfGroupsInEligibilityRecord(connection, eligibilityId)
-      // logger.debug(`${groupsCount} groups exist`)
+      logger.debug(`${groupsCount} groups exist`)
       if (groupsCount <= 0) {
         logger.debug('No groups exist, deleting')
         await deleteEligibilityRecord(connection, eligibilityId)
@@ -132,7 +132,7 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
 async function groupEligbilityExists (connection, eligibilityId, groupLegacyId) {
   logger.debug(`groupEligibiltyExists query ${util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId)}`)
   const result = connection.queryAsync(util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId))
-  logger.debug(`groupEligibiltyExists result ${JSON.stringify(result)}`)
+  logger.debug(`groupEligibiltyExists result ${JSON.stringify(result)} ${JSON.stringify(result[0])}`)
   return (result && result[0]) || false
 }
 
