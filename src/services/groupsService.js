@@ -131,7 +131,7 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
  */
 async function groupEligbilityExists (connection, eligibilityId, groupLegacyId) {
   logger.debug(`groupEligibiltyExists query ${util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId)}`)
-  const result = connection.queryAsync(util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId))
+  const result = await connection.queryAsync(util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId))
   logger.debug(`groupEligibiltyExists result ${JSON.stringify(result)} ${JSON.stringify(result[0])}`)
   return (result && result[0]) || false
 }
