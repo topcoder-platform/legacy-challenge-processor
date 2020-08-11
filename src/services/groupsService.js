@@ -37,7 +37,7 @@ async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
 
     await connection.commitTransactionAsync()
   } catch (e) {
-    logger.error(`Error in 'addGroupToChallenge' ${e}`)
+    logger.error(`Error in 'addGroupToChallenge' ${e}, rolling back transaction`)
     await connection.rollbackTransactionAsync()
     throw e
   } finally {
@@ -60,18 +60,20 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
     if (groupEligibilityRecord) {
       await deleteGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
       const { groupsCount } = await getCountOfGroupsInEligibilityRecord(connection, eligibilityId)
+      logger.debug(`${groupsCount} groups exist`)
       if (groupsCount <= 0) {
+        logger.debug('No groups exist, deleting')
         await deleteEligibilityRecord(connection, eligibilityId)
       }
     }
 
     await connection.commitTransactionAsync()
   } catch (e) {
-    logger.error(`Error in 'removeGroupFromChallenge' ${e}`)
+    logger.error(`Error in 'removeGroupFromChallenge' ${e}, rolling back transaction`)
     await connection.rollbackTransactionAsync()
     throw e
   } finally {
-    logger.info(`Group ${groupLegacyId} added to challenge ${challengeLegacyId}`)
+    logger.info(`Group ${groupLegacyId} removed to challenge ${challengeLegacyId}`)
     await connection.closeAsync()
   }
 }
@@ -119,6 +121,7 @@ async function deleteGroupEligibilityRecord (connection, eligibilityId, groupLeg
 
 async function deleteEligibilityRecord (connection, eligibilityId) {
   const query = await prepare(connection, QUERY_DELETE_CONTEST_ELIGIBILITY)
+  logger.debug(`deleteEligibilityRecord Query ${JSON.stringify(query)}`)
   const result = await query.executeAsync([eligibilityId])
   logger.debug(`deleteEligibilityRecord ${JSON.stringify(result)}`)
   return result[0]
