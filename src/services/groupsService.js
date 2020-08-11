@@ -5,7 +5,7 @@ const helper = require('../common/helper')
 
 const QUERY_GET_ELIGIBILITY_ID = 'SELECT limit 1 * FROM contest_eligibility WHERE contest_id = %d'
 const QUERY_GET_GROUP_ELIGIBILITY_ID = 'SELECT limit 1 * FROM group_contest_eligibility WHERE contest_eligibility_id = %d AND group_id = %d'
-const QUERY_GET_GROUPS_COUNT = 'SELECT count(*) as groups_count FROM group_contest_eligibility WHERE contest_eligibility_id = %d'
+const QUERY_GET_GROUPS_COUNT = 'SELECT count(*) as cnt FROM group_contest_eligibility WHERE contest_eligibility_id = %d'
 
 const QUERY_INSERT_CONTEST_ELIGIBILITY = 'INSERT INTO contest_eligibility (contest_eligibility_id, contest_id, is_studio) VALUES(contest_eligibility_seq.NEXTVAL, ?, 0)'
 const QUERY_INSERT_GROUP_CONTEST_ELIGIBILITY = 'INSERT INTO group_contest_eligibility (contest_eligibility_id, group_id) VALUES(?, ?)'
@@ -128,9 +128,11 @@ async function deleteEligibilityRecord (connection, eligibilityId) {
 }
 
 async function getCountOfGroupsInEligibilityRecord (connection, eligibilityId) {
-  const result = await connection.queryAsync(util.format(QUERY_GET_GROUPS_COUNT, eligibilityId))
+  const query = util.format(QUERY_GET_GROUPS_COUNT, eligibilityId)
+  logger.debug(`Query! ${query}`)
+  const result = await connection.queryAsync(query)
   logger.debug(`getCountOfGroupsInEligibilityRecord ${JSON.stringify(result)}`)
-  return { groupsCount: result[0].groups_count || 0 }
+  return { groupsCount: result[0].cnt || 0 }
 }
 
 module.exports = {
