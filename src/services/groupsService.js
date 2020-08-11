@@ -79,8 +79,8 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 async function getChallengeEligibilityId (connection, challengeLegacyId) {
   // get the challenge eligibility record, if one doesn't exist, create it and return the id
   const query = await prepare(connection, QUERY_GET_ELIGIBILITY_ID)
-  const result = await query.executeAsync([challengeLegacyId])
-  // const result = await connection.queryAsync(query)
+  const result = await query.queryAsync([challengeLegacyId])
+  logger.info(`getChallengeEligibilityId Result ${JSON.stringify(result)}`)
   if (result.length === 0) {
     logger.debug(`getChallengeEligibility not found, creating ${challengeLegacyId}`)
     return createChallengeEligibilityRecord(connection, challengeLegacyId)
@@ -90,7 +90,7 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
 
 async function getGroupEligibility (connection, eligibilityId, groupLegacyId) {
   const query = await prepare(connection, QUERY_GET_GROUP_ELIGIBILITY_ID)
-  const result = await query.executeAsync([eligibilityId, groupLegacyId])
+  const result = await query.queryAsync([eligibilityId, groupLegacyId])
   // const result = await connection.queryAsync(query)
   if (result.length === 0) {
     logger.debug(`getGroupEligibility not found, creating ${eligibilityId} ${groupLegacyId}`)
@@ -129,7 +129,7 @@ async function deleteEligibilityRecord (connection, eligibilityId) {
 
 async function getCountOfGroupsInEligibilityRecord (connection, eligibilityId) {
   const query = await prepare(connection, QUERY_GET_GROUPS_COUNT)
-  const result = await query.executeAsync([eligibilityId])
+  const result = await query.queryAsync([eligibilityId])
   logger.debug(`getCountOfGroupsInEligibilityRecord ${JSON.stringify(result)}`)
   return result[0].groups_count || 0
 }
