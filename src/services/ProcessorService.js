@@ -120,10 +120,10 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
  * @param {Boolean} isCreated flag indicate the DTO is used in creating challenge
- * @param {Object} existingV4Challenge the existing V4 challenge from ES
+ * @param {Array} informixGroupIds IDs from Informix associated with the group
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
-async function parsePayload (payload, m2mToken, isCreated = true, existingV4Challenge) {
+async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds) {
   try {
     let projectId
     if (_.get(payload, 'legacy.directProjectId')) {
@@ -216,7 +216,7 @@ async function parsePayload (payload, m2mToken, isCreated = true, existingV4Chal
       data.platforms = _.filter(platResult.result.content, e => payload.tags.includes(e.name))
     }
     if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
-      const oldGroups = _.map(_.get(existingV4Challenge, 'groupIds', []), g => _.toString(g))
+      const oldGroups = _.map(informixGroupIds, g => _.toString(g))
       const newGroups = []
 
       for (const group of payload.groups) {
@@ -237,8 +237,8 @@ async function parsePayload (payload, m2mToken, isCreated = true, existingV4Chal
       if (data.groupsToBeDeleted.length > 0) {
         logger.debug(`parsePayload :: Deleting Groups ${JSON.stringify(data.groupsToBeAdded)}`)
       }
-    } else if (existingV4Challenge && existingV4Challenge.groupIds && existingV4Challenge.groupIds.length > 0) {
-      data.groupsToBeDeleted = _.map(existingV4Challenge.groupIds, g => _.toString(g))
+    } else if (informixGroupIds && informixGroupIds.length > 0) {
+      data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
     return data
   } catch (err) {
@@ -389,50 +389,52 @@ async function processUpdate (message) {
     return
   }
 
-  let challengeV4FromEs
-  let esClient
-  const esQuery = {
-    index: config.get('V4_ES.CHALLENGE_ES_INDEX'),
-    type: config.get('V4_ES.CHALLENGE_ES_TYPE'),
-    size: 1,
-    from: 0,
-    body: {
-      _source: ['groupIds'],
-      query: {
-        match_phrase: {
-          _id: message.payload.legacyId
-        }
-      }
-    }
-  }
+  // let challengeV4FromEs
+  // let esClient
+  // const esQuery = {
+  //   index: config.get('V4_ES.CHALLENGE_ES_INDEX'),
+  //   type: config.get('V4_ES.CHALLENGE_ES_TYPE'),
+  //   size: 1,
+  //   from: 0,
+  //   body: {
+  //     _source: ['groupIds'],
+  //     query: {
+  //       match_phrase: {
+  //         _id: message.payload.legacyId
+  //       }
+  //     }
+  //   }
+  // }
 
-  try {
-    // Search with constructed query
-    logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
-    esClient = helper.getESClient()
-    const docs = await esClient.search(esQuery)
-    logger.debug(`Docs: ${JSON.stringify(docs)}`)
-    // Extract data from hits
-    if (docs.hits.total === 0) {
-      throw new Error('Challenge does not exist yet on ES')
-    }
-    challengeV4FromEs = _.map(docs.hits.hits, item => item._source)[0]
-    if (!challengeV4FromEs) {
-      throw new Error(`Could not find challenge ${message.payload.legacyId} on ES`)
-    }
-  } catch (e) {
-    // postpone kafka event
-    logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e}`)
-    await new Promise((resolve) => {
-      setTimeout(async () => {
-        await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
-        resolve()
-      }, config.RETRY_TIMEOUT)
-    })
-    return
-  }
+  const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
+  logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
+  // try {
+  //   // Search with constructed query
+  //   // logger.debug(`Looking Up Challenge in V4 - index: ${config.get('V4_ES.CHALLENGE_ES_INDEX')} type: ${config.get('V4_ES.CHALLENGE_ES_TYPE')} - Query: ${JSON.stringify(esQuery)}`)
+  //   esClient = helper.getESClient()
+  //   const docs = await esClient.search(esQuery)
+  //   logger.debug(`Docs: ${JSON.stringify(docs)}`)
+  //   // Extract data from hits
+  //   if (docs.hits.total === 0) {
+  //     throw new Error('Challenge does not exist yet on ES')
+  //   }
+  //   challengeV4FromEs = _.map(docs.hits.hits, item => item._source)[0]
+  //   if (!challengeV4FromEs) {
+  //     throw new Error(`Could not find challenge ${message.payload.legacyId} on ES`)
+  //   }
+  // } catch (e) {
+  //   // postpone kafka event
+  //   logger.info(`Challenge does not exist yet on ES. Will post the same message back to the bus API, ${e}`)
+  //   await new Promise((resolve) => {
+  //     setTimeout(async () => {
+  //       await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
+  //       resolve()
+  //     }, config.RETRY_TIMEOUT)
+  //   })
+  //   return
+  // }
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, challengeV4FromEs)
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
