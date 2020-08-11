@@ -59,10 +59,10 @@ async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
     }
 
     const groupMappingExists = await groupEligbilityExists(connection, eligibilityId, groupLegacyId)
-    if (!groupMappingExists) {
-      await createGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
+    if (groupMappingExists) {
+      logger.warn(`Group Relation Already Exists for ${groupMappingExists} - ${eligibilityId} ${groupLegacyId}`)
     } else {
-      logger.warn(`Group Relation Already Exists for ${eligibilityId} ${groupLegacyId}`)
+      await createGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
     }
 
     await connection.commitTransactionAsync()
@@ -130,6 +130,7 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
  * @returns {Object} DB Result
  */
 async function groupEligbilityExists (connection, eligibilityId, groupLegacyId) {
+  logger.debug(`groupEligibiltyExists query ${util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId)}`)
   return connection.queryAsync(util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId)) || false
 }
 
