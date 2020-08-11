@@ -48,9 +48,9 @@ async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
     }
 
     const groupMappingExists = await groupEligbilityExists(connection, eligibilityId, groupLegacyId)
-    if(!groupMappingExists) {
+    if (!groupMappingExists) {
       await createGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
-    } else { 
+    } else {
       logger.warn(`Group Relation Already Exists for ${eligibilityId} ${groupLegacyId}`)
     }
 
@@ -74,7 +74,7 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
     if (!eligibilityId) {
       throw new Error(`Eligibility not found for legacyId ${challengeLegacyId}`)
     }
-    const groupEligibilityRecord = await getGroupEligibility(connection, eligibilityId, groupLegacyId)
+    const groupEligibilityRecord = await groupEligbilityExists(connection, eligibilityId, groupLegacyId)
 
     if (groupEligibilityRecord) {
       await deleteGroupEligibilityRecord(connection, eligibilityId, groupLegacyId)
@@ -100,28 +100,27 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
 /**
  * Gets the eligibility ID of a legacyId
- * @param {Object} connection 
- * @param {Number} challengeLegacyId 
+ * @param {Object} connection
+ * @param {Number} challengeLegacyId
  * @returns {Object} { eligibilityId }
  */
 async function getChallengeEligibilityId (connection, challengeLegacyId) {
   // get the challenge eligibility record, if one doesn't exist, create it and return the id
-  let result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
+  const result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
   // logger.info(`getChallengeEligibilityId Result ${JSON.stringify(result)}`)
   // if (result.length === 0) {
   //   logger.debug(`getChallengeEligibility not found, creating ${challengeLegacyId}`)
   //   await createChallengeEligibilityRecord(connection, challengeLegacyId)
   //   result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
   // }
-  if(result) return { eligibilityId: result[0].contest_eligibility_id }
+  if (result) return { eligibilityId: result[0].contest_eligibility_id }
   return false
 }
 
 /**
- * 
- * @param {Object} connection 
- * @param {Number} eligibilityId 
- * @param {Number} groupLegacyId 
+ * @param {Object} connection
+ * @param {Number} eligibilityId
+ * @param {Number} groupLegacyId
  * @returns {Object} DB Result
  */
 async function groupEligbilityExists (connection, eligibilityId, groupLegacyId) {
@@ -144,6 +143,7 @@ async function createGroupEligibilityRecord (connection, eligibilityId, groupLeg
   if (result) {
     const idResult = await connection.queryAsync(util.format(QUERY_GET_GROUP_ELIGIBILITY_ID, eligibilityId, groupLegacyId))
     return idResult[0]
+  }
   return result
 }
 
