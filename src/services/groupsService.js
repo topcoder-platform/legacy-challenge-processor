@@ -125,8 +125,7 @@ async function getChallengeEligibilityId (connection, challengeLegacyId) {
   //   await createChallengeEligibilityRecord(connection, challengeLegacyId)
   //   result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
   // }
-  if (result) return { eligibilityId: result[0].contest_eligibility_id }
-  return false
+  return result[0].contest_eligibility_id || false
 }
 
 /**
