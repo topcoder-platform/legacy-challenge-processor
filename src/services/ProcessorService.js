@@ -166,23 +166,23 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       data.detailedRequirements += '\n\r'
       data.detailedRequirements += 'V5 Challenge - Additional Details: ' + payload.id
     }
-
+    const SECONDS_TO_MILLIS = 1000
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
       const startDate = payload.startDate ? new Date(payload.startDate) : new Date()
       data.registrationStartsAt = startDate.toISOString()
-      data.registrationEndsAt = new Date(startDate.getTime() + (registrationPhase || submissionPhase).duration).toISOString()
-      data.registrationDuration = (registrationPhase || submissionPhase).duration
-      data.submissionEndsAt = new Date(startDate.getTime() + submissionPhase.duration).toISOString()
-      data.submissionDuration = submissionPhase.duration
+      data.registrationEndsAt = new Date(startDate.getTime() + (registrationPhase || submissionPhase).duration * SECONDS_TO_MILLIS).toISOString()
+      data.registrationDuration = (registrationPhase || submissionPhase).duration * SECONDS_TO_MILLIS
+      data.submissionEndsAt = new Date(startDate.getTime() + submissionPhase.duration * SECONDS_TO_MILLIS).toISOString()
+      data.submissionDuration = submissionPhase.duration * SECONDS_TO_MILLIS
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.phaseId === config.CHECKPOINT_SUBMISSION_PHASE_ID)
       if (checkpointPhase) {
         data.checkpointSubmissionStartsAt = startDate.toISOString()
-        data.checkpointSubmissionEndsAt = new Date(startDate.getTime() + checkpointPhase.duration).toISOString()
-        data.checkpointSubmissionDuration = checkpointPhase.duration
+        data.checkpointSubmissionEndsAt = new Date(startDate.getTime() + checkpointPhase.duration * SECONDS_TO_MILLIS).toISOString()
+        data.checkpointSubmissionDuration = checkpointPhase.duration * SECONDS_TO_MILLIS
       } else {
         data.checkpointSubmissionStartsAt = null
         data.checkpointSubmissionEndsAt = null
