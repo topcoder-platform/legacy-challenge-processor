@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 : '
 : ************************************************************************
 :
@@ -35,7 +35,7 @@ LDF="-Wl,--no-as-needed"
 
 Usage()
 {
-    echo '
+    echo ' 
 Usage: esql [-e] [-thread] [-glu] [esqlcargs] [-cc] [otherargs] [-o outfile]
             [-cp] [-onlycp] [-np] [-nup]
             [-libs] esqlfile.ec [othersrc.c...] [otherobj.o...] [-lyourlib...]
@@ -58,10 +58,10 @@ Usage: esql [-e] [-thread] [-glu] [esqlcargs] [-cc] [otherargs] [-o outfile]
 
 
 if [  x$UNAMEM = "xx86_64" ]
-then
+then 
     CC="$CC $CC_AMD32"
     CPP="$CPP $CC_AMD32"
-else
+else 
     CC=$CC
     CPP=$CPP
 fi
@@ -215,20 +215,20 @@ LPATH=${LPATH=${INFDIR}/lib}
 
 nettli="FALSE"
 # check for the existence of libraries specified in TLILIB
-if test "x$TLILIB" != "x " -a "x$TLILIB" != "x"
+if test "x$TLILIB" != "x " -a "x$TLILIB" != "x" 
 then
     for lib in $TLILIB
     do
         if test -f $lib
         then
             nettli="TRUE"
-            break
+            break 
         else
             continue
         fi
     done
     # Update SYSNLIB if nettli is false
-    if test "$nettli" = "FALSE"
+    if test "$nettli" = "FALSE" 
     then
         remove=`echo $lib | sed -e s:\/.*\/lib:-l: -e s:[.].*$::`
         SYSNLIB=`echo $SYSNLIB | sed -e s:"$remove":: `
@@ -250,7 +250,7 @@ esac
 
 ONLYCFILES=
 
-while true
+while true 
 do
     case $1 in
         *.c )
@@ -414,8 +414,8 @@ do
                         exit 1
                     fi
                 fi
-                CC="$CC_TH -DIFX_THREAD -D_REENTRANT"
-                CPP="$CPP_TH -DIFX_THREAD -D_REENTRANT"
+                CC="$CC_TH -DIFX_THREAD -D_REENTRANT" 
+                CPP="$CPP_TH -DIFX_THREAD -D_REENTRANT" 
                 SYSLIB="$SYSTHRLIB"
                 SYSNLIB="$SYSNLIB"
             fi
@@ -650,7 +650,7 @@ do
                 PA="$PA $1"
             fi
             shift
-            ;;
+            ;;   
         -local )
             if [ "x$CCOPT" != "x" ]
             then
@@ -749,7 +749,7 @@ do
                 A="$A $1"
                 CA="$CA $1"
                 CPPOPTS="$CPPOPTS $1"
-            fi
+            fi 
             shift
             ;;
 
@@ -804,7 +804,7 @@ do
             if [ "$UPROTECTOPT" != "-n" ]; then
                 $UPROTECT $UPROTECTOPT < $cpoutput > $base.icp
             fi
-
+ 
             if [ "$STAT" = 0 ]; then
                 rm -f $base.tmp $base.pcp
             fi

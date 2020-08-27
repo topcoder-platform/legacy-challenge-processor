@@ -5,7 +5,7 @@
 require('./bootstrap')
 const config = require('config')
 const Kafka = require('no-kafka')
-const healthcheck = require('topcoder-healthcheck-dropin')
+const healthcheck = require('@topcoder-platform/topcoder-healthcheck-dropin')
 const logger = require('./common/logger')
 const helper = require('./common/helper')
 const ProcessorService = require('./services/ProcessorService')

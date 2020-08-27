@@ -10,6 +10,7 @@ const config = require('config')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
+const groupService = require('./groupsService')
 // TODO: Remove this
 // const showdown = require('showdown')
 // const converter = new showdown.Converter()
@@ -22,6 +23,21 @@ const constants = require('../constants')
 async function getGroup (v5GroupId, m2mToken) {
   const response = await helper.getRequest(`${config.V5_GROUPS_API_URL}/${v5GroupId}`, m2mToken)
   return response.body
+}
+
+/**
+ * Associate challenge groups
+ * @param {Array<String>} toBeAdded the array of groups to be added
+ * @param {Array<String>} toBeDeleted the array of groups to be deleted
+ * @param {String|Number} challengeId the legacy challenge ID
+ */
+async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], challengeId) {
+  for (const group of toBeAdded) {
+    await groupService.addGroupToChallenge(challengeId, group)
+  }
+  for (const group of toBeDeleted) {
+    await groupService.removeGroupFromChallenge(challengeId, group)
+  }
 }
 
 /**
@@ -104,9 +120,10 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
  * @param {Boolean} isCreated flag indicate the DTO is used in creating challenge
+ * @param {Array} informixGroupIds IDs from Informix associated with the group
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
-async function parsePayload (payload, m2mToken, isCreated = true) {
+async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds) {
   try {
     let projectId
     if (_.get(payload, 'legacy.directProjectId')) {
@@ -149,23 +166,23 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.detailedRequirements += '\n\r'
       data.detailedRequirements += 'V5 Challenge - Additional Details: ' + payload.id
     }
-
+    const SECONDS_TO_MILLIS = 1000
     if (payload.phases) {
       const registrationPhase = _.find(payload.phases, p => p.phaseId === config.REGISTRATION_PHASE_ID)
       const submissionPhase = _.find(payload.phases, p => p.phaseId === config.SUBMISSION_PHASE_ID)
       const startDate = payload.startDate ? new Date(payload.startDate) : new Date()
       data.registrationStartsAt = startDate.toISOString()
-      data.registrationEndsAt = new Date(startDate.getTime() + (registrationPhase || submissionPhase).duration).toISOString()
-      data.registrationDuration = (registrationPhase || submissionPhase).duration
-      data.submissionEndsAt = new Date(startDate.getTime() + submissionPhase.duration).toISOString()
-      data.submissionDuration = submissionPhase.duration
+      data.registrationEndsAt = new Date(startDate.getTime() + (registrationPhase || submissionPhase).duration * SECONDS_TO_MILLIS).toISOString()
+      data.registrationDuration = (registrationPhase || submissionPhase).duration * SECONDS_TO_MILLIS
+      data.submissionEndsAt = new Date(startDate.getTime() + submissionPhase.duration * SECONDS_TO_MILLIS).toISOString()
+      data.submissionDuration = submissionPhase.duration * SECONDS_TO_MILLIS
 
       // Only Design can have checkpoint phase and checkpoint prizes
       const checkpointPhase = _.find(payload.phases, p => p.phaseId === config.CHECKPOINT_SUBMISSION_PHASE_ID)
       if (checkpointPhase) {
         data.checkpointSubmissionStartsAt = startDate.toISOString()
-        data.checkpointSubmissionEndsAt = new Date(startDate.getTime() + checkpointPhase.duration).toISOString()
-        data.checkpointSubmissionDuration = checkpointPhase.duration
+        data.checkpointSubmissionEndsAt = new Date(startDate.getTime() + checkpointPhase.duration * SECONDS_TO_MILLIS).toISOString()
+        data.checkpointSubmissionDuration = checkpointPhase.duration * SECONDS_TO_MILLIS
       } else {
         data.checkpointSubmissionStartsAt = null
         data.checkpointSubmissionEndsAt = null
@@ -199,20 +216,29 @@ async function parsePayload (payload, m2mToken, isCreated = true) {
       data.platforms = _.filter(platResult.result.content, e => payload.tags.includes(e.name))
     }
     if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
-      const legacyGroups = []
+      const oldGroups = _.map(informixGroupIds, g => _.toString(g))
+      const newGroups = []
+
       for (const group of payload.groups) {
         try {
           const groupInfo = await getGroup(group, m2mToken)
           if (!_.isEmpty(_.get(groupInfo, 'oldId'))) {
-            legacyGroups.push(_.get(groupInfo, 'oldId'))
+            newGroups.push(_.toString(_.get(groupInfo, 'oldId')))
           }
         } catch (e) {
           logger.warn(`Failed to load details for group ${group}`)
         }
       }
-      if (legacyGroups.length > 0) {
-        data.groupIds = legacyGroups
+      data.groupsToBeAdded = _.difference(newGroups, oldGroups)
+      data.groupsToBeDeleted = _.difference(oldGroups, newGroups)
+      if (data.groupsToBeAdded.length > 0) {
+        logger.debug(`parsePayload :: Adding Groups ${JSON.stringify(data.groupsToBeAdded)}`)
       }
+      if (data.groupsToBeDeleted.length > 0) {
+        logger.debug(`parsePayload :: Deleting Groups ${JSON.stringify(data.groupsToBeAdded)}`)
+      }
+    } else if (informixGroupIds && informixGroupIds.length > 0) {
+      data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
     return data
   } catch (err) {
@@ -264,7 +290,8 @@ async function processCreate (message) {
 
   logger.debug('processCreate :: beforeTry')
   try {
-    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: saveDraftContestDTO }, m2mToken)
+    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -343,12 +370,13 @@ async function processUpdate (message) {
   }
   const m2mToken = await helper.getM2MToken()
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false)
-  logger.debug('Parsed Payload', saveDraftContestDTO)
   let challenge
   try {
     // ensure challenge existed
     challenge = await getChallengeById(m2mToken, message.payload.legacyId)
+    if (!challenge) {
+      throw new Error(`Could not find challenge ${message.payload.legacyId}`)
+    }
   } catch (e) {
     // postponne kafka event
     logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
@@ -360,12 +388,15 @@ async function processUpdate (message) {
     })
     return
   }
-  try {
-    if (!challenge) {
-      throw new Error(`Could not find challenge ${message.payload.legacyId}`)
-    }
 
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: saveDraftContestDTO }, m2mToken)
+  const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
+  logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
+
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
+  // logger.debug('Parsed Payload', saveDraftContestDTO)
+  try {
+    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
 
     if (message.payload.status) {
       logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)

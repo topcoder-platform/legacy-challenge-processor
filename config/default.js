@@ -29,6 +29,21 @@ module.exports = {
   AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET || '',
   AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
 
+  INFORMIX: {
+    SERVER: process.env.INFORMIX_SERVER || 'informixoltp_tcp', // informix server
+    DATABASE: process.env.INFORMIX_DATABASE || 'tcs_catalog', // informix database
+    HOST: process.env.INFORMIX_HOST || 'localhost', // host
+    PROTOCOL: process.env.INFORMIX_PROTOCOL || 'onsoctcp',
+    PORT: process.env.INFORMIX_PORT || '2021', // port
+    DB_LOCALE: process.env.INFORMIX_DB_LOCALE || 'en_US.57372',
+    USER: process.env.INFORMIX_USER || 'informix', // user
+    PASSWORD: process.env.INFORMIX_PASSWORD || '1nf0rm1x', // password
+    POOL_MAX_SIZE: parseInt(process.env.MAXPOOL, 10) || 60,
+    maxsize: parseInt(process.env.MAXSIZE) || 0,
+    minpool: parseInt(process.env.MINPOOL, 10) || 1,
+    idleTimeout: parseInt(process.env.IDLETIMEOUT, 10) || 3600,
+    timeout: parseInt(process.env.TIMEOUT, 10) || 30000
+  },
   // Topcoder APIs
   V5_CHALLENGE_API_URL: process.env.V5_CHALLENGE_API_URL || 'http://localhost:4000/v5/challenges',
   V5_CHALLENGE_TYPE_API_URL: process.env.V5_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v5/challenge-types',

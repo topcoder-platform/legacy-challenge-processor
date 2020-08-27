@@ -1,10 +1,8 @@
 #!/bin/bash
 set -eo pipefail
-APP_NAME=$1
 UPDATE_CACHE=""
-#docker-compose -f docker/docker-compose.yml build $APP_NAME
-docker build -f docker/Dockerfile -t $APP_NAME:latest .
-docker create --name app $APP_NAME:latest
+docker-compose -f docker/docker-compose.yml build legacy-challenge-processor
+docker create --name app legacy-challenge-processor:latest
 
 if [ -d node_modules ]
 then
@@ -21,3 +19,4 @@ if [ "$UPDATE_CACHE" == 1 ]
 then
   docker cp app:/app/node_modules .
 fi
+
