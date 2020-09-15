@@ -400,7 +400,7 @@ async function processUpdate (message) {
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
 
     if (message.payload.status) {
-      logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
+      // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
         logger.info('Activating challenge...')
         await activateChallenge(message.payload.legacyId)
