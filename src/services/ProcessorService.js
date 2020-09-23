@@ -381,12 +381,19 @@ async function processUpdate (message) {
     // postponne kafka event
     logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
     logger.error(`Error: ${JSON.stringify(e)}`)
-    // await new Promise((resolve) => {
-    //   setTimeout(async () => {
-    //     await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
-    //     resolve()
-    //   }, config.RETRY_TIMEOUT)
-    // })
+
+    const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
+    let currentRetryCount = parseInt(get(messageJSON.payload, retryCountIdentifier, 1), 10)
+    if (currentRetryCount <= config.MAX_RETRIES) {
+      await new Promise((resolve) => {
+        setTimeout(async () => {
+          await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...messageJSON.payload, [retryCountIdentifier]: currentRetryCount })
+          resolve()
+        }, config.RETRY_TIMEOUT * currentRetryCount)
+      })
+    }  else {
+      logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
+    }
     return
   }
 
