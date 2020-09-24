@@ -303,6 +303,11 @@ async function processCreate (message) {
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
+    // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
+    const challengeResourcesResponse = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeUuid}&perPage=100`, m2mToken)
+    for (const resource of (challengeResourcesResponse.body || [])) {
+      await helper.postBusEvent(config.RESOURCE_CREATE_TOPIC, _.pick(resource, ['id', 'challengeId', 'memberId', 'memberHandle', 'roleId', 'created', 'createdBy', 'updated', 'updatedBy', 'legacyId']))
+    }
     logger.debug('End of processCreate')
   } catch (e) {
     logger.error('processCreate Catch', e)
