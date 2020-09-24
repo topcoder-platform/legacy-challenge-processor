@@ -383,15 +383,15 @@ async function processUpdate (message) {
     logger.error(`Error: ${JSON.stringify(e)}`)
 
     const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
-    let currentRetryCount = parseInt(get(messageJSON.payload, retryCountIdentifier, 1), 10)
+    const currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
     if (currentRetryCount <= config.MAX_RETRIES) {
       await new Promise((resolve) => {
         setTimeout(async () => {
-          await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...messageJSON.payload, [retryCountIdentifier]: currentRetryCount })
+          await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
           resolve()
         }, config.RETRY_TIMEOUT * currentRetryCount)
       })
-    }  else {
+    } else {
       logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
     }
     return
