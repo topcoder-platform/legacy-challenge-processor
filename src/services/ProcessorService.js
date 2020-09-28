@@ -388,7 +388,7 @@ async function processUpdate (message) {
     logger.error(`Error: ${JSON.stringify(e)}`)
 
     const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
-    const currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
+    let currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
     if (currentRetryCount <= config.MAX_RETRIES) {
       await new Promise((resolve) => {
         setTimeout(async () => {
