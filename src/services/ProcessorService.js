@@ -392,6 +392,7 @@ async function processUpdate (message) {
     if (currentRetryCount <= config.MAX_RETRIES) {
       await new Promise((resolve) => {
         setTimeout(async () => {
+          currentRetryCount += 1
           await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
           resolve()
         }, config.RETRY_TIMEOUT * currentRetryCount)
