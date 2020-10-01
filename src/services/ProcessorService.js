@@ -291,6 +291,7 @@ async function processCreate (message) {
   logger.debug('processCreate :: beforeTry')
   try {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
@@ -435,16 +436,7 @@ async function processUpdate (message) {
         }
       }
     }
-    // we can't switch the challenge type
-    // TODO: track is missing from the response.
-    // if (message.payload.legacy.track) {
-    //   const newTrack = message.payload.legacy.track
-    //   // track information is stored in subTrack of V4 API
-    //   if (challenge.track !== newTrack) {
-    //     // refer ContestDirectManager.prepare in ap-challenge-microservice
-    //     throw new Error('You can\'t change challenge track')
-    //   }
-    // }
+    await helper.forceV4ESFeeder(message.payload.legacyId)
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e

@@ -150,6 +150,16 @@ async function postBusEvent (topic, payload) {
   })
 }
 
+async function forceV4ESFeeder (legacyId) {
+  const token = await getM2MToken()
+  const body = {
+    param: {
+      challengeIds: [legacyId]
+    }
+  }
+  await request.put(`${config.V4_ES_FEEDER_API_URL}`).send(body).set({ Authorization: `Bearer ${token}` })
+}
+
 module.exports = {
   getInformixConnection,
   getKafkaOptions,
@@ -158,5 +168,6 @@ module.exports = {
   getRequest,
   putRequest,
   postRequest,
-  postBusEvent
+  postBusEvent,
+  forceV4ESFeeder
 }
