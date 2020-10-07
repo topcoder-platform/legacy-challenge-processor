@@ -11,6 +11,7 @@ const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
 const groupService = require('./groupsService')
+const copilotPaymentService = require('./copilotPaymentService')
 // TODO: Remove this
 // const showdown = require('showdown')
 // const converter = new showdown.Converter()
@@ -37,6 +38,21 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], chall
   }
   for (const group of toBeDeleted) {
     await groupService.removeGroupFromChallenge(challengeId, group)
+  }
+}
+
+/**
+ * Set the copilot payment on legacy
+ * @param {Number|String} legacyChallengeId the legacy challenge ID
+ * @param {Array} prizeSets the prizeSets array
+ */
+async function setCopilotPayment (legacyChallengeId, prizeSets = []) {
+  try {
+    const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', null)
+    await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment)
+  } catch (e) {
+    logger.error('Failed to set the copilot payment!')
+    logger.debug(e)
   }
 }
 
@@ -293,6 +309,7 @@ async function processCreate (message) {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
+    await setCopilotPayment(newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'))
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -412,6 +429,7 @@ async function processUpdate (message) {
   try {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
+    await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'))
 
     if (message.payload.status) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
