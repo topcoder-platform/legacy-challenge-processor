@@ -11,6 +11,7 @@ const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
 const groupService = require('./groupsService')
+const copilotPaymentService = require('./copilotPaymentService')
 // TODO: Remove this
 // const showdown = require('showdown')
 // const converter = new showdown.Converter()
@@ -37,6 +38,21 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], chall
   }
   for (const group of toBeDeleted) {
     await groupService.removeGroupFromChallenge(challengeId, group)
+  }
+}
+
+/**
+ * Set the copilot payment on legacy
+ * @param {Number|String} legacyChallengeId the legacy challenge ID
+ * @param {Array} prizeSets the prizeSets array
+ */
+async function setCopilotPayment (legacyChallengeId, prizeSets = []) {
+  try {
+    const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', null)
+    await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment)
+  } catch (e) {
+    logger.error('Failed to set the copilot payment!')
+    logger.debug(e)
   }
 }
 
@@ -291,7 +307,9 @@ async function processCreate (message) {
   logger.debug('processCreate :: beforeTry')
   try {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
+    await setCopilotPayment(newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'))
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -303,6 +321,11 @@ async function processCreate (message) {
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
+    // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
+    const challengeResourcesResponse = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeUuid}&perPage=100`, m2mToken)
+    for (const resource of (challengeResourcesResponse.body || [])) {
+      await helper.postBusEvent(config.RESOURCE_CREATE_TOPIC, _.pick(resource, ['id', 'challengeId', 'memberId', 'memberHandle', 'roleId', 'created', 'createdBy', 'updated', 'updatedBy', 'legacyId']))
+    }
     logger.debug('End of processCreate')
   } catch (e) {
     logger.error('processCreate Catch', e)
@@ -380,12 +403,21 @@ async function processUpdate (message) {
   } catch (e) {
     // postponne kafka event
     logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
-    await new Promise((resolve) => {
-      setTimeout(async () => {
-        await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, message.payload)
-        resolve()
-      }, config.RETRY_TIMEOUT)
-    })
+    logger.error(`Error: ${JSON.stringify(e)}`)
+
+    const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
+    let currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
+    if (currentRetryCount <= config.MAX_RETRIES) {
+      await new Promise((resolve) => {
+        setTimeout(async () => {
+          currentRetryCount += 1
+          await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
+          resolve()
+        }, config.RETRY_TIMEOUT * currentRetryCount)
+      })
+    } else {
+      logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
+    }
     return
   }
 
@@ -397,9 +429,10 @@ async function processUpdate (message) {
   try {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
+    await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'))
 
     if (message.payload.status) {
-      logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
+      // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
         logger.info('Activating challenge...')
         await activateChallenge(message.payload.legacyId)
@@ -421,16 +454,7 @@ async function processUpdate (message) {
         }
       }
     }
-    // we can't switch the challenge type
-    // TODO: track is missing from the response.
-    // if (message.payload.legacy.track) {
-    //   const newTrack = message.payload.legacy.track
-    //   // track information is stored in subTrack of V4 API
-    //   if (challenge.track !== newTrack) {
-    //     // refer ContestDirectManager.prepare in ap-challenge-microservice
-    //     throw new Error('You can\'t change challenge track')
-    //   }
-    // }
+    await helper.forceV4ESFeeder(message.payload.legacyId)
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e

@@ -35,9 +35,11 @@ The following parameters can be set in config files or in env variables:
 - KAFKA_GROUP_ID: the Kafka group id, default value is 'legacy-challenge-processor'
 - KAFKA_ERROR_TOPIC: The kafka error topic.
 - BUSAPI_URL: Bus API URL
+- MAX_RETRIES: the number of max retries; default value: 3
 - RETRY_TIMEOUT: The timeout to retry processing the same message
 - CREATE_CHALLENGE_TOPIC: the create challenge Kafka message topic, default value is 'challenge.notification.create'
 - UPDATE_CHALLENGE_TOPIC: the update challenge Kafka message topic, default value is 'challenge.notification.update'
+- RESOURCE_CREATE_TOPIC: the resource create Kafka message topic, default value is 'challenge.action.resource.create'
 - AUTH0_URL: Auth0 URL, used to get TC M2M token
 - AUTH0_AUDIENCE: Auth0 audience, used to get TC M2M token
 - TOKEN_CACHE_TIME: Auth0 token cache time, used to get TC M2M token
@@ -45,6 +47,7 @@ The following parameters can be set in config files or in env variables:
 - AUTH0_CLIENT_SECRET: Auth0 client secret, used to get TC M2M token
 - AUTH0_PROXY_SERVER_URL: Proxy Auth0 URL, used to get TC M2M token
 - V5_CHALLENGE_API_URL: v5 challenge api url, default value is 'http://localhost:4000/v5/challenges'
+- V5_RESOURCES_API_URL: v5 resources api url, default value is 'http://localhost:4000/v5/resources'
 - V5_CHALLENGE_TYPE_API_URL: v5 challenge type api url, default value is 'http://localhost:4000/v5/challenge-types'
 - V4_CHALLENGE_API_URL: v4 challenge api url, default value is 'http://localhost:4000/v4/challenges'
 - V4_TECHNOLOGIES_API_URL: v4 technologies api url, default value is 'http://localhost:4000/v4/technologies'

@@ -15,11 +15,13 @@ module.exports = {
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'legacy-challenge-processor',
   KAFKA_ERROR_TOPIC: process.env.KAFKA_ERROR_TOPIC || 'common.error.reporting',
   BUSAPI_URL: process.env.BUSAPI_URL || 'https://api.topcoder-dev.com/v5',
+  MAX_RETRIES: process.env.MAX_RETRIES || 3,
   RETRY_TIMEOUT: process.env.RETRY_TIMEOUT || 10 * 1000,
 
   // Topics to listen
   CREATE_CHALLENGE_TOPIC: process.env.CREATE_CHALLENGE_TOPIC || 'challenge.notification.create',
   UPDATE_CHALLENGE_TOPIC: process.env.UPDATE_CHALLENGE_TOPIC || 'challenge.notification.update',
+  RESOURCE_CREATE_TOPIC: process.env.RESOURCE_CREATE_TOPIC || 'challenge.action.resource.create',
 
   // Auth0 parameters
   AUTH0_URL: process.env.AUTH0_URL || 'https://topcoder-dev.auth0.com/oauth/token',
@@ -46,6 +48,7 @@ module.exports = {
   },
   // Topcoder APIs
   V5_CHALLENGE_API_URL: process.env.V5_CHALLENGE_API_URL || 'http://localhost:4000/v5/challenges',
+  V5_RESOURCES_API_URL: process.env.V5_RESOURCES_API_URL || 'http://localhost:4000/v5/resources',
   V5_CHALLENGE_TYPE_API_URL: process.env.V5_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v5/challenge-types',
   V4_CHALLENGE_TYPE_API_URL: process.env.V4_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v4/challenge-types',
   V4_CHALLENGE_API_URL: process.env.V4_CHALLENGE_API_URL || 'http://localhost:4000/v4/challenges',
@@ -53,11 +56,14 @@ module.exports = {
   V4_PLATFORMS_API_URL: process.env.V4_PLATFORMS_API_URL || 'http://localhost:4000/v4/platforms',
   V5_PROJECTS_API_URL: process.env.V5_PROJECTS_API_URL || 'https://api.topcoder-dev.com/v5/projects',
   V5_CHALLENGE_MIGRATION_API_URL: process.env.V5_CHALLENGE_MIGRATION_API_URL || 'https://api.topcoder-dev.com/v5/challenge-migration',
+  V4_ES_FEEDER_API_URL: process.env.V4_ES_FEEDER_API_URL || 'https://api.topcoder-dev.com/v4/esfeeder/challenges',
 
   V5_GROUPS_API_URL: process.env.V5_GROUPS_API_URL || 'https://api.topcoder-dev.com/v5/groups',
 
   // PHASE IDs
   REGISTRATION_PHASE_ID: process.env.REGISTRATION_PHASE_ID || 'a93544bc-c165-4af4-b55e-18f3593b457a',
   SUBMISSION_PHASE_ID: process.env.SUBMISSION_PHASE_ID || '6950164f-3c5e-4bdc-abc8-22aaf5a1bd49',
-  CHECKPOINT_SUBMISSION_PHASE_ID: process.env.CHECKPOINT_SUBMISSION_PHASE_ID || 'd8a2cdbe-84d1-4687-ab75-78a6a7efdcc8'
+  CHECKPOINT_SUBMISSION_PHASE_ID: process.env.CHECKPOINT_SUBMISSION_PHASE_ID || 'd8a2cdbe-84d1-4687-ab75-78a6a7efdcc8',
+
+  COPILOT_PAYMENT_TYPE: process.env.COPILOT_PAYMENT_TYPE || 'copilot'
 }
