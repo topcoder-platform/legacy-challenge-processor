@@ -49,6 +49,7 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], chall
 async function setCopilotPayment (legacyChallengeId, prizeSets = []) {
   try {
     const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', null)
+    logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId}`)
     await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment)
   } catch (e) {
     logger.error('Failed to set the copilot payment!')

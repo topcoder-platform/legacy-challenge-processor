@@ -81,6 +81,7 @@ async function getCopilotPayment (connection, challengeLegacyId) {
  */
 async function createCopilotPayment (connection, challengeLegacyId, amount, createdBy) {
   const query = await prepare(connection, QUERY_INSERT_COPILOT_PAYMENT)
+  logger.debug(`Create Copilot Payment Query ${query} Values: ${[challengeLegacyId, amount, createdBy, createdBy]}`)
   return query.executeAsync([challengeLegacyId, amount, createdBy, createdBy])
 }
 
@@ -92,6 +93,7 @@ async function createCopilotPayment (connection, challengeLegacyId, amount, crea
  */
 async function updateCopilotPayment (connection, challengeLegacyId, newValue, updatedBy) {
   const query = await prepare(connection, QUERY_UPDATE_COPILOT_PAYMENT)
+  logger.debug(`Update Copilot Payment Query ${query} Values: ${[newValue, updatedBy, challengeLegacyId]}`)
   return query.executeAsync([newValue, updatedBy, challengeLegacyId])
 }
 
@@ -102,6 +104,7 @@ async function updateCopilotPayment (connection, challengeLegacyId, newValue, up
  */
 async function deleteCopilotPayment (connection, challengeLegacyId) {
   const query = await prepare(connection, QUERY_DELETE_COPILOT_PAYMENT)
+  logger.debug(`Delete Copilot Payment Query ${query} Values: ${[challengeLegacyId]}`)
   return query.executeAsync([challengeLegacyId])
 }
 
