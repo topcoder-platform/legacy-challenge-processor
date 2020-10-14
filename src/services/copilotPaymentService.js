@@ -91,7 +91,7 @@ async function getCopilotPayment (connection, challengeLegacyId) {
  */
 async function getCopilotResourceId (connection, challengeLegacyId) {
   const result = await connection.queryAsync(util.format(QUERY_GET_COPILOT_RESOURCE_FOR_CHALLENGE, challengeLegacyId))
-  return _.get(result, '[0]', null)
+  return _.get(result, '[0].resourceid', null)
 }
 
 /**
