@@ -405,23 +405,24 @@ async function processUpdate (message) {
     }
   } catch (e) {
     // postponne kafka event
-    logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
-    logger.error(`Error: ${JSON.stringify(e)}`)
+    logger.warn(`Error getting challenge by id, RETRY TURNED OFF ${JSON.stringify(e)}`)
+    // logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
+    // logger.error(`Error: ${JSON.stringify(e)}`)
 
-    const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
-    let currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
-    if (currentRetryCount <= config.MAX_RETRIES) {
-      await new Promise((resolve) => {
-        setTimeout(async () => {
-          currentRetryCount += 1
-          await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
-          resolve()
-        }, config.RETRY_TIMEOUT * currentRetryCount)
-      })
-    } else {
-      logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
-    }
-    return
+    // const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
+    // let currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
+    // if (currentRetryCount <= config.MAX_RETRIES) {
+    //   await new Promise((resolve) => {
+    //     setTimeout(async () => {
+    //       currentRetryCount += 1
+    //       await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
+    //       resolve()
+    //     }, config.RETRY_TIMEOUT * currentRetryCount)
+    //   })
+    // } else {
+    //   logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
+    // }
+    // return
   }
 
   const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
