@@ -9,6 +9,7 @@ const request = require('superagent')
 const m2mAuth = require('tc-core-library-js').auth.m2m
 const busApi = require('@topcoder-platform/topcoder-bus-api-wrapper')
 const constants = require('../constants')
+const logger = require('../common/logger')
 const m2m = m2mAuth(_.pick(config, ['AUTH0_URL', 'AUTH0_AUDIENCE', 'TOKEN_CACHE_TIME', 'AUTH0_PROXY_SERVER_URL']))
 
 const Pool = ifxnjs.Pool
@@ -64,6 +65,7 @@ async function getM2MToken () {
  * @returns {Object} the response
  */
 async function patchRequest (url, body, m2mToken) {
+  logger.debug(`Patch Request Body: ${JSON.stringify(body)}`)
   return request
     .patch(url)
     .send(body)
