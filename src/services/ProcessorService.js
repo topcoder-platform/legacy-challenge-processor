@@ -11,10 +11,8 @@ const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
 const groupService = require('./groupsService')
+const termsService = require('./termsService')
 const copilotPaymentService = require('./copilotPaymentService')
-// TODO: Remove this
-// const showdown = require('showdown')
-// const converter = new showdown.Converter()
 
 /**
  * Get group information by V5 UUID
@@ -27,17 +25,52 @@ async function getGroup (v5GroupId, m2mToken) {
 }
 
 /**
+ * Get terms information by V5 UUID
+ * @param {String} v5TermsId the v5 terms UUID
+ * @param {String} m2mToken token for accessing the API
+ */
+async function getV5Terms (v5TermsId, m2mToken) {
+  const response = await helper.getRequest(`${config.V5_TERMS_API_URL}/${v5TermsId}`, m2mToken)
+  return response.body
+}
+
+/**
+ * Get resource role information by V5 UUID
+ * @param {String} v5RoleId the v5 role UUID
+ * @param {String} m2mToken token for accessing the API
+ */
+async function getV5Role (v5RoleId, m2mToken) {
+  const response = await helper.getRequest(`${config.V5_RESOURCE_ROLES_API_URL}?id=${v5RoleId}`, m2mToken)
+  return response.body[0]
+}
+
+/**
  * Associate challenge groups
  * @param {Array<String>} toBeAdded the array of groups to be added
  * @param {Array<String>} toBeDeleted the array of groups to be deleted
- * @param {String|Number} challengeId the legacy challenge ID
+ * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
-async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], challengeId) {
+async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legacyChallengeId) {
   for (const group of toBeAdded) {
-    await groupService.addGroupToChallenge(challengeId, group)
+    await groupService.addGroupToChallenge(legacyChallengeId, group)
   }
   for (const group of toBeDeleted) {
-    await groupService.removeGroupFromChallenge(challengeId, group)
+    await groupService.removeGroupFromChallenge(legacyChallengeId, group)
+  }
+}
+
+/**
+ * Associate challenge terms
+ * @param {Array<Object{termsId, roleId}>} toBeAdded the array of terms to be added
+ * @param {Array<Object{termsId, roleId}>} toBeDeleted the array of terms to be deleted
+ * @param {String|Number} legacyChallengeId the legacy challenge ID
+ */
+async function associateChallengeTerms (toBeAdded = [], toBeDeleted = [], legacyChallengeId) {
+  for (const terms of toBeAdded) {
+    await termsService.addTermsToChallenge(legacyChallengeId, terms.termsId, terms.roleId)
+  }
+  for (const terms of toBeDeleted) {
+    await termsService.removeTermsFromChallenge(legacyChallengeId, terms.termsId, terms.roleId)
   }
 }
 
@@ -140,9 +173,10 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * @param {String} m2mToken the m2m token
  * @param {Boolean} isCreated flag indicate the DTO is used in creating challenge
  * @param {Array} informixGroupIds IDs from Informix associated with the group
+ * @param {Array<Object>} informixTermsIds IDs from Informix [{termsId, roleId}]
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
-async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds) {
+async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds, informixTermsArray) {
   try {
     let projectId
     if (_.get(payload, 'legacy.directProjectId')) {
@@ -259,6 +293,36 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
     } else if (informixGroupIds && informixGroupIds.length > 0) {
       data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
+
+    if (payload.terms && _.get(payload, 'terms.length', 0) > 0) {
+      const oldTerms = informixGroupIds
+      const newTerms = []
+
+      for (const v5TermsObject of payload.terms) {
+        try {
+          const termsInfo = await getV5Terms(v5TermsObject.id, m2mToken)
+          if (!_.isEmpty(_.get(termsInfo, 'legacyId'))) {
+            const roleInfo = await getV5Role(v5TermsObject.roleId, m2mToken)
+            if (!_.isEmpty(_.get(roleInfo, 'legacyId'))) {
+              newTerms.push({ id: _.get(termsInfo, 'legacyId'), roleId: _.get(roleInfo, 'legacyId') })
+            }
+          }
+        } catch (e) {
+          logger.warn(`Failed to load details for terms ${v5TermsObject}`)
+        }
+      }
+      data.termsToBeAdded = _.difference(newTerms, oldTerms)
+      data.termsToBeDeleted = _.difference(oldTerms, newTerms)
+      if (data.termsToBeAdded.length > 0) {
+        logger.debug(`parsePayload :: Adding Terms ${JSON.stringify(data.termsToBeAdded)}`)
+      }
+      if (data.termsToBeDeleted.length > 0) {
+        logger.debug(`parsePayload :: Deleting Terms ${JSON.stringify(data.termsToBeDeleted)}`)
+      }
+    } else if (informixTermsArray && informixTermsArray.length > 0) {
+      data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
+    }
+
     return data
   } catch (err) {
     // Debugging
@@ -312,6 +376,7 @@ async function processCreate (message) {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
+    await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
     await setCopilotPayment(newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
@@ -427,12 +492,14 @@ async function processUpdate (message) {
 
   const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
   logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
+  const v4TermsIds = await termsService.getTermsForChallenge(message.payload.legacyId)
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds, v4TermsIds)
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
+    await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, message.payload.legacyId)
     await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
 
     if (message.payload.status) {

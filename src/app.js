@@ -63,7 +63,8 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
 
   try {
     if (topic === config.CREATE_CHALLENGE_TOPIC) {
-      await ProcessorService.processCreate(messageJSON)
+      // create shut off. Only works with challenges of status draft, which happens on update
+      // await ProcessorService.processCreate(messageJSON)
     } else {
       await ProcessorService.processUpdate(messageJSON)
     }

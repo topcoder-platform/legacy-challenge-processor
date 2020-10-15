@@ -49,6 +49,9 @@ module.exports = {
   // Topcoder APIs
   V5_CHALLENGE_API_URL: process.env.V5_CHALLENGE_API_URL || 'http://localhost:4000/v5/challenges',
   V5_RESOURCES_API_URL: process.env.V5_RESOURCES_API_URL || 'http://localhost:4000/v5/resources',
+  V5_TERMS_API_URL: process.env.V5_TERMS_API_URL || 'http://localhost:4000/v5/terms',
+  V5_RESOURCE_ROLES_API_URL: process.env.V5_RESOURCE_ROLES_API_URL || 'http://localhost:4000/v5/resource-roles',
+
   V5_CHALLENGE_TYPE_API_URL: process.env.V5_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v5/challenge-types',
   V4_CHALLENGE_TYPE_API_URL: process.env.V4_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v4/challenge-types',
   V4_CHALLENGE_API_URL: process.env.V4_CHALLENGE_API_URL || 'http://localhost:4000/v4/challenges',
