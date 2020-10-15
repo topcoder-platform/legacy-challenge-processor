@@ -3,6 +3,7 @@
  */
 
 require('./bootstrap')
+const _ = require('lodash')
 const config = require('config')
 const Kafka = require('no-kafka')
 const healthcheck = require('@topcoder-platform/topcoder-healthcheck-dropin')
@@ -43,6 +44,21 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
     // commit the message and ignore it
     await consumer.commitOffset({ topic, partition, offset: m.offset })
     return
+  }
+
+  // do not trust the message payload
+  // the message.payload will be replaced with the data from the API
+  try {
+    const challengeUuid = _.get(messageJSON, 'payload.id')
+    if (_.isEmpty(challengeUuid)) {
+      throw new Error('Invalid payload')
+    }
+    const m2mToken = await helper.getM2MToken()
+    const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
+    messageJSON.payload = v5Challenge.body
+  } catch (err) {
+    logger.debug('Failed to fetch challenge information')
+    logger.logFullError(err)
   }
 
   try {

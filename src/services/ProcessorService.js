@@ -443,9 +443,7 @@ async function processUpdate (message) {
         logger.info('Activated!')
       }
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
-        const challengeUuid = message.payload.id
-        const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-        if (v5Challenge.body.task.isTask) {
+        if (message.payload.task.isTask) {
           logger.info('Challenge is a TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
             throw new Error('Cannot close challenge without winners')
