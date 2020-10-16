@@ -3,7 +3,7 @@ const _ = require('lodash')
 const util = require('util')
 const helper = require('../common/helper')
 
-const QUERY_GET_CHALLENGE_TERMS = 'SELECT resource_role_id as roleId, terms_of_use_id as id FROM project_role_terms_of_use_xref WHERE project_id = %d'
+const QUERY_GET_CHALLENGE_TERMS = 'SELECT resource_role_id, terms_of_use_id FROM project_role_terms_of_use_xref WHERE project_id = %d'
 const QUERY_INSERT_CHALLENGE_TERMS = `INSERT INTO project_role_terms_of_use_xref
   (project_id, resource_role_id, terms_of_use_id, create_date, modify_date, sort_order, group_ind) 
   VALUES (?, ?, ?, CURRENT, CURRENT, 1, 0)`
@@ -33,7 +33,7 @@ async function getTermsForChallenge (challengeLegacyId) {
   } finally {
     await connection.closeAsync()
   }
-  return _.map(result, r => ({ termsId: r.terms_of_use_id, roleId: r.resource_role_id }))
+  return _.map(result, r => ({ id: r.terms_of_use_id, roleId: r.resource_role_id }))
 }
 
 async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyResourceRoleId) {

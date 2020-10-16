@@ -69,9 +69,10 @@ async function associateChallengeTerms (toBeAdded = [], toBeDeleted = [], legacy
   for (const terms of toBeAdded) {
     await termsService.addTermsToChallenge(legacyChallengeId, terms.termsId, terms.roleId)
   }
-  for (const terms of toBeDeleted) {
-    await termsService.removeTermsFromChallenge(legacyChallengeId, terms.termsId, terms.roleId)
-  }
+  // TODO :: For now, don't remove terms from legacy
+  // for (const terms of toBeDeleted) {
+  //   await termsService.removeTermsFromChallenge(legacyChallengeId, terms.termsId, terms.roleId)
+  // }
 }
 
 /**
@@ -319,9 +320,11 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       if (data.termsToBeDeleted.length > 0) {
         logger.debug(`parsePayload :: Deleting Terms ${JSON.stringify(data.termsToBeDeleted)}`)
       }
-    } else if (informixTermsArray && informixTermsArray.length > 0) {
-      data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
     }
+    // TODO Do not remove terms
+    // } else if (informixTermsArray && informixTermsArray.length > 0) {
+    //   data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
+    // }
 
     return data
   } catch (err) {
