@@ -66,6 +66,8 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legac
  * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
 async function associateChallengeTerms (toBeAdded = [], toBeDeleted = [], legacyChallengeId) {
+  logger.debug(`Challenge ${legacyChallengeId} Terms to be added ${JSON.stringify(toBeAdded)}`)
+  logger.debug(`Challenge ${legacyChallengeId} Terms to be removed ${JSON.stringify(toBeDeleted)}`)
   for (const terms of toBeAdded) {
     await termsService.addTermsToChallenge(legacyChallengeId, terms.termsId, terms.roleId)
   }
@@ -325,6 +327,8 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
     // } else if (informixTermsArray && informixTermsArray.length > 0) {
     //   data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
     // }
+    logger.debug(`parsePayload V5 Terms ${JSON.stringify(payload.terms)}`)
+    logger.debug(`parsePayload legacy Terms ${JSON.stringify(informixTermsArray)}`)
 
     return data
   } catch (err) {
