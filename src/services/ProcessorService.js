@@ -70,21 +70,21 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId) {
   const legacyTermsArray = await termsService.getTermsForChallenge(legacyChallengeId)
   const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_NDA_ID))
 
-  logger.debug(`V5 Terms ${JSON.stringify(v5Terms)}`)
-  logger.debug(`V5 NDA Found ${nda} ${JSON.stringify(nda)}`)
+  // logger.debug(`V5 Terms ${JSON.stringify(v5Terms)}`)
+  // logger.debug(`V5 NDA Found ${nda} ${JSON.stringify(nda)}`)
 
-  logger.debug(`Legacy Terms ${JSON.stringify(legacyTermsArray)}`)
-  logger.debug(`Legacy NDA Found ${JSON.stringify(legacyNDA)}`)
+  // logger.debug(`Legacy Terms ${JSON.stringify(legacyTermsArray)}`)
+  // logger.debug(`Legacy NDA Found ${JSON.stringify(legacyNDA)}`)
 
   if (nda && nda.id && !legacyNDA) {
-    logger.debug('v5 NDA exist, not in legacy. Adding to Legacy.')
+    logger.debug('Associate Challenge Terms - v5 NDA exist, not in legacy. Adding to Legacy.')
     const m2mToken = await helper.getM2MToken()
     const v5Term = await getV5Terms(nda.id, m2mToken)
     return termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID)
   }
 
   if (!nda && legacyNDA && legacyNDA.id) {
-    logger.debug('Legacy NDA exist, not in V5. Removing from Legacy.')
+    logger.debug('Associate Challenge Terms - Legacy NDA exist, not in V5. Removing from Legacy.')
     return termsService.removeTermsFromChallenge(legacyChallengeId, legacyNDA.id, config.LEGACY_SUBMITTER_ROLE_ID)
   }
 
