@@ -79,8 +79,8 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId) {
   if (nda.id && !legacyNDA) {
     logger.debug('v5 NDA exist, not in legacy. Adding to Legacy.')
     const m2mToken = helper.getM2MToken()
-    const v5Terms = getV5Terms(nda.id, m2mToken)
-    return termsService.addTermsToChallenge(legacyChallengeId, v5Terms.legacyId, config.LEGACY_SUBMITTER_ROLE_ID)
+    const v5Term = await getV5Terms(nda.id, m2mToken)
+    return termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID)
   }
 
   if (!nda && legacyNDA) {
