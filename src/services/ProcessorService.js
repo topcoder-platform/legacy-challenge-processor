@@ -34,15 +34,15 @@ async function getV5Terms (v5TermsId, m2mToken) {
   return response.body
 }
 
-/**
- * Get resource role information by V5 UUID
- * @param {String} v5RoleId the v5 role UUID
- * @param {String} m2mToken token for accessing the API
- */
-async function getV5Role (v5RoleId, m2mToken) {
-  const response = await helper.getRequest(`${config.V5_RESOURCE_ROLES_API_URL}?id=${v5RoleId}`, m2mToken)
-  return response.body[0]
-}
+// /**
+//  * Get resource role information by V5 UUID
+//  * @param {String} v5RoleId the v5 role UUID
+//  * @param {String} m2mToken token for accessing the API
+//  */
+// async function getV5Role (v5RoleId, m2mToken) {
+//   const response = await helper.getRequest(`${config.V5_RESOURCE_ROLES_API_URL}?id=${v5RoleId}`, m2mToken)
+//   return response.body[0]
+// }
 
 /**
  * Associate challenge groups
@@ -65,16 +65,28 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legac
  * @param {Array<Object{termsId, roleId}>} toBeDeleted the array of terms to be deleted
  * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
-async function associateChallengeTerms (toBeAdded = [], toBeDeleted = [], legacyChallengeId) {
-  logger.debug(`Challenge ${legacyChallengeId} Terms to be added ${JSON.stringify(toBeAdded)}`)
-  logger.debug(`Challenge ${legacyChallengeId} Terms to be removed ${JSON.stringify(toBeDeleted)}`)
-  for (const terms of toBeAdded) {
-    await termsService.addTermsToChallenge(legacyChallengeId, terms.termsId, terms.roleId)
+async function associateChallengeTerms (v5Terms, legacyChallengeId) {
+  const nda = _.find(v5Terms, e => e.id === config.V5_TERMS_NDA_ID)
+  const legacyTermsArray = await termsService.getTermsForChallenge(legacyChallengeId)
+  const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === config.LEGACY_TERMS_NDA_ID)
+
+  logger.debug(`V5 Terms ${JSON.stringify(v5Terms)}`)
+  logger.debug(`V5 NDA Found ${nda} ${JSON.stringify(nda)}`)
+
+  logger.debug(`Legacy Terms ${JSON.stringify(legacyTermsArray)}`)
+  logger.debug(`Legacy NDA Found ${JSON.stringify(legacyNDA)}`)
+
+  if (nda.id && !legacyNDA) {
+    logger.debug('v5 NDA exist, not in legacy. Adding to Legacy.')
+    const m2mToken = helper.getM2MToken()
+    const v5Terms = getV5Terms(nda.id, m2mToken)
+    return termsService.addTermsToChallenge(legacyChallengeId, v5Terms.legacyId, config.LEGACY_SUBMITTER_ROLE_ID)
   }
-  // TODO :: For now, don't remove terms from legacy
-  // for (const terms of toBeDeleted) {
-  //   await termsService.removeTermsFromChallenge(legacyChallengeId, terms.termsId, terms.roleId)
-  // }
+
+  if (!nda && legacyNDA) {
+    logger.debug('Legacy NDA exist, not in V5. Removing from Legacy.')
+    return termsService.removeTermsFromChallenge(legacyChallengeId, legacyNDA.id, config.LEGACY_SUBMITTER_ROLE_ID)
+  }
 }
 
 /**
@@ -297,38 +309,38 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
 
-    if (payload.terms && _.get(payload, 'terms.length', 0) > 0) {
-      const oldTerms = informixGroupIds
-      const newTerms = []
+    // if (payload.terms && _.get(payload, 'terms.length', 0) > 0) {
+    //   const oldTerms = informixGroupIds
+    //   const newTerms = []
 
-      for (const v5TermsObject of payload.terms) {
-        try {
-          const termsInfo = await getV5Terms(v5TermsObject.id, m2mToken)
-          if (!_.isEmpty(_.get(termsInfo, 'legacyId'))) {
-            const roleInfo = await getV5Role(v5TermsObject.roleId, m2mToken)
-            if (!_.isEmpty(_.get(roleInfo, 'legacyId'))) {
-              newTerms.push({ id: _.get(termsInfo, 'legacyId'), roleId: _.get(roleInfo, 'legacyId') })
-            }
-          }
-        } catch (e) {
-          logger.warn(`Failed to load details for terms ${v5TermsObject}`)
-        }
-      }
-      data.termsToBeAdded = _.difference(newTerms, oldTerms)
-      data.termsToBeDeleted = _.difference(oldTerms, newTerms)
-      if (data.termsToBeAdded.length > 0) {
-        logger.debug(`parsePayload :: Adding Terms ${JSON.stringify(data.termsToBeAdded)}`)
-      }
-      if (data.termsToBeDeleted.length > 0) {
-        logger.debug(`parsePayload :: Deleting Terms ${JSON.stringify(data.termsToBeDeleted)}`)
-      }
-    }
-    // TODO Do not remove terms
-    // } else if (informixTermsArray && informixTermsArray.length > 0) {
-    //   data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
+    //   for (const v5TermsObject of payload.terms) {
+    //     try {
+    //       const termsInfo = await getV5Terms(v5TermsObject.id, m2mToken)
+    //       if (!_.isEmpty(_.get(termsInfo, 'legacyId'))) {
+    //         const roleInfo = await getV5Role(v5TermsObject.roleId, m2mToken)
+    //         if (!_.isEmpty(_.get(roleInfo, 'legacyId'))) {
+    //           newTerms.push({ id: _.get(termsInfo, 'legacyId'), roleId: _.get(roleInfo, 'legacyId') })
+    //         }
+    //       }
+    //     } catch (e) {
+    //       logger.warn(`Failed to load details for terms ${v5TermsObject}`)
+    //     }
+    //   }
+    //   data.termsToBeAdded = _.difference(newTerms, oldTerms)
+    //   data.termsToBeDeleted = _.difference(oldTerms, newTerms)
+    //   if (data.termsToBeAdded.length > 0) {
+    //     logger.debug(`parsePayload :: Adding Terms ${JSON.stringify(data.termsToBeAdded)}`)
+    //   }
+    //   if (data.termsToBeDeleted.length > 0) {
+    //     logger.debug(`parsePayload :: Deleting Terms ${JSON.stringify(data.termsToBeDeleted)}`)
+    //   }
     // }
-    logger.debug(`parsePayload V5 Terms ${JSON.stringify(payload.terms)}`)
-    logger.debug(`parsePayload legacy Terms ${JSON.stringify(informixTermsArray)}`)
+    // // TODO Do not remove terms
+    // // } else if (informixTermsArray && informixTermsArray.length > 0) {
+    // //   data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
+    // // }
+    // logger.debug(`parsePayload V5 Terms ${JSON.stringify(payload.terms)}`)
+    // logger.debug(`parsePayload legacy Terms ${JSON.stringify(informixTermsArray)}`)
 
     return data
   } catch (err) {
@@ -383,7 +395,7 @@ async function processCreate (message) {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
-    await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
+    // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
     await setCopilotPayment(newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
@@ -499,14 +511,14 @@ async function processUpdate (message) {
 
   const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
   logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
-  const v4TermsIds = await termsService.getTermsForChallenge(message.payload.legacyId)
+  // const v4TermsIds = await termsService.getTermsForChallenge(message.payload.legacyId)
 
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds, v4TermsIds)
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
-    await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, message.payload.legacyId)
+    await associateChallengeTerms(message.payload.terms, message.payload.legacyId)
     await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
 
     if (message.payload.status) {
