@@ -68,7 +68,7 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legac
 async function associateChallengeTerms (v5Terms, legacyChallengeId) {
   const nda = _.find(v5Terms, e => e.id === config.V5_TERMS_NDA_ID)
   const legacyTermsArray = await termsService.getTermsForChallenge(legacyChallengeId)
-  const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === config.LEGACY_TERMS_NDA_ID)
+  const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_NDA_ID))
 
   logger.debug(`V5 Terms ${JSON.stringify(v5Terms)}`)
   logger.debug(`V5 NDA Found ${nda} ${JSON.stringify(nda)}`)
