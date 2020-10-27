@@ -193,7 +193,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * @param {Array<Object>} informixTermsIds IDs from Informix [{termsId, roleId}]
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
-async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds, informixTermsArray) {
+async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds) {
   try {
     let projectId
     if (_.get(payload, 'legacy.directProjectId')) {
@@ -310,39 +310,6 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
     } else if (informixGroupIds && informixGroupIds.length > 0) {
       data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
-
-    // if (payload.terms && _.get(payload, 'terms.length', 0) > 0) {
-    //   const oldTerms = informixGroupIds
-    //   const newTerms = []
-
-    //   for (const v5TermsObject of payload.terms) {
-    //     try {
-    //       const termsInfo = await getV5Terms(v5TermsObject.id, m2mToken)
-    //       if (!_.isEmpty(_.get(termsInfo, 'legacyId'))) {
-    //         const roleInfo = await getV5Role(v5TermsObject.roleId, m2mToken)
-    //         if (!_.isEmpty(_.get(roleInfo, 'legacyId'))) {
-    //           newTerms.push({ id: _.get(termsInfo, 'legacyId'), roleId: _.get(roleInfo, 'legacyId') })
-    //         }
-    //       }
-    //     } catch (e) {
-    //       logger.warn(`Failed to load details for terms ${v5TermsObject}`)
-    //     }
-    //   }
-    //   data.termsToBeAdded = _.difference(newTerms, oldTerms)
-    //   data.termsToBeDeleted = _.difference(oldTerms, newTerms)
-    //   if (data.termsToBeAdded.length > 0) {
-    //     logger.debug(`parsePayload :: Adding Terms ${JSON.stringify(data.termsToBeAdded)}`)
-    //   }
-    //   if (data.termsToBeDeleted.length > 0) {
-    //     logger.debug(`parsePayload :: Deleting Terms ${JSON.stringify(data.termsToBeDeleted)}`)
-    //   }
-    // }
-    // // TODO Do not remove terms
-    // // } else if (informixTermsArray && informixTermsArray.length > 0) {
-    // //   data.termsToBeDeleted = _.map(informixTermsArray, o => ({ id: o.id, roleId: o.roleId }))
-    // // }
-    // logger.debug(`parsePayload V5 Terms ${JSON.stringify(payload.terms)}`)
-    // logger.debug(`parsePayload legacy Terms ${JSON.stringify(informixTermsArray)}`)
 
     return data
   } catch (err) {
