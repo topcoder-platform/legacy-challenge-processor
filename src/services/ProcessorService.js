@@ -13,6 +13,71 @@ const constants = require('../constants')
 const groupService = require('./groupsService')
 const termsService = require('./termsService')
 const copilotPaymentService = require('./copilotPaymentService')
+const timelineService = require('./timelineService')
+const paymentService = require('./paymentService')
+
+/**
+ * Sync the information from the v5 phases into legacy
+ * @param {Number} legacyId the legacy challenge ID
+ * @param {Array} v4Phases the v4 phases
+ * @param {Array} v5Phases the v5 phases
+ */
+async function syncChallengePhases (legacyId, v5Phases) {
+  const phaseTypes = await timelineService.getPhaseTypes()
+  const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
+  for (const phase of phasesFromIFx) {
+    const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
+    const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
+    if (v5Equivalent) {
+      // Compare duration and status
+      if (v5Equivalent.duration * 1000 !== phase.duration ||
+        (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
+        (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
+        // update phase
+        await timelineService.updatePhase(
+          phase.project_phase_id,
+          legacyId,
+          v5Equivalent.scheduledStartDate,
+          v5Equivalent.scheduledEndDate,
+          v5Equivalent.duration * 1000,
+          v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : constants.PhaseStatusTypes.Closed)
+      }
+    }
+  }
+}
+
+/**
+ * Update the payments from v5 prize sets into legacy
+ * @param {Array} v4Prizes the v4 prizes
+ * @param {Number} v4NumOfCheckpointPrizes the number of checkpoints (v4)
+ * @param {Number} v4CheckpointPrize the dollar ammount of each checkpoint prize (v4)
+ * @param {Array} v5PrizeSets the v5 prize sets
+ */
+async function updateMemberPayments (legacyId, v5PrizeSets) {
+  const prizesFromIfx = await paymentService.getChallengePrizes(legacyId, constants.prizeTypesIds.Contest)
+  const [checkpointPrizesFromIfx] = await paymentService.getChallengePrizes(legacyId, constants.prizeTypesIds.Checkpoint)
+  const v5Prizes = _.map(_.get(_.find(v5PrizeSets, p => p.type === constants.prizeSetTypes.ChallengePrizes), 'prizes', []), prize => prize.value)
+  const v5CheckPointPrizes = _.map(_.get(_.find(v5PrizeSets, p => p.type === constants.prizeSetTypes.CheckPoint), 'prizes', []), prize => prize.value)
+  // compare prizes
+  if (v5Prizes && v5Prizes.length > 0) {
+    v5Prizes.sort((a, b) => b - a)
+    for (let i = 0; i < v5Prizes.length; i += 1) {
+      const ifxPrize = _.find(prizesFromIfx, p => p.place === i + 1)
+      if (ifxPrize) {
+        if (_.toInteger(ifxPrize.prize_amount) !== v5Prizes[i]) {
+          await paymentService.updatePrize(ifxPrize.prize_id, legacyId, v5Prizes[i], 1)
+        }
+      }
+    }
+  }
+  // compare checkpoint prizes
+  if (v5CheckPointPrizes && v5CheckPointPrizes.length > 0) {
+    // we assume that all checkpoint prizes will be the same
+    if (v5CheckPointPrizes.length !== checkpointPrizesFromIfx.number_of_submissions || v5CheckPointPrizes[0] !== _.toInteger(checkpointPrizesFromIfx.prize_amount)) {
+      await paymentService.updatePrize(checkpointPrizesFromIfx.prize_id, legacyId, v5CheckPointPrizes[0], v5CheckPointPrizes.length)
+    }
+  }
+}
 
 /**
  * Get group information by V5 UUID
@@ -444,8 +509,8 @@ async function processUpdate (message) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
     return
   } else if (!message.payload.legacyId) {
-    logger.debug('Legacy ID does not exist. Will create...')
-    return processCreate(message)
+    logger.debug('Legacy ID does not exist. Will create the challenge first using the V4 API...')
+    await processCreate(message)
   }
   const m2mToken = await helper.getM2MToken()
 
@@ -485,11 +550,12 @@ async function processUpdate (message) {
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
-    await associateChallengeTerms(message.payload.terms, message.payload.legacyId)
-    await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
+    if (challenge) {
+      // Only make the PUT request to the API if the challenge was available on the V4 API otherwise this will throw an error
+      await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    }
 
+    // Handle activating challenges and closing out tasks
     if (message.payload.status) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
@@ -511,6 +577,15 @@ async function processUpdate (message) {
         }
       }
     }
+
+    // Direct IFX modifications
+    await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
+    await associateChallengeTerms(message.payload.terms, message.payload.legacyId)
+    await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
+
+    // Force the V4 ES feeder
     await helper.forceV4ESFeeder(message.payload.legacyId)
   } catch (e) {
     logger.error('processUpdate Catch', e)

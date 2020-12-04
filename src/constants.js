@@ -45,10 +45,22 @@ const challengeStatuses = {
   CancelledZeroRegistrations: 'Cancelled - Zero Registrations'
 }
 
+const PhaseStatusTypes = {
+  Open: 2,
+  Closed: 3
+}
+
+const prizeTypesIds = {
+  Contest: 15,
+  Checkpoint: 14
+}
+
 module.exports = {
   prizeSetTypes,
   EVENT_ORIGINATOR,
   EVENT_MIME_TYPE,
   createChallengeStatusesMap,
-  challengeStatuses
+  challengeStatuses,
+  PhaseStatusTypes,
+  prizeTypesIds
 }
