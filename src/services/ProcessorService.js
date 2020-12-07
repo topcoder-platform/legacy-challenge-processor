@@ -44,16 +44,17 @@ async function syncChallengePhases (legacyId, v5Phases) {
       }
     }
   }
+  // TODO: What about iterative reviews? There can be many for the same challenge.
+  // TODO: handle timeline template updates
 }
 
 /**
  * Update the payments from v5 prize sets into legacy
- * @param {Array} v4Prizes the v4 prizes
- * @param {Number} v4NumOfCheckpointPrizes the number of checkpoints (v4)
- * @param {Number} v4CheckpointPrize the dollar ammount of each checkpoint prize (v4)
+ * @param {Number} legacyId the legacy challenge ID
  * @param {Array} v5PrizeSets the v5 prize sets
+ * @param {String} createdBy the created by
  */
-async function updateMemberPayments (legacyId, v5PrizeSets) {
+async function updateMemberPayments (legacyId, v5PrizeSets, createdBy) {
   const prizesFromIfx = await paymentService.getChallengePrizes(legacyId, constants.prizeTypesIds.Contest)
   const [checkpointPrizesFromIfx] = await paymentService.getChallengePrizes(legacyId, constants.prizeTypesIds.Checkpoint)
   const v5Prizes = _.map(_.get(_.find(v5PrizeSets, p => p.type === constants.prizeSetTypes.ChallengePrizes), 'prizes', []), prize => prize.value)
@@ -67,6 +68,14 @@ async function updateMemberPayments (legacyId, v5PrizeSets) {
         if (_.toInteger(ifxPrize.prize_amount) !== v5Prizes[i]) {
           await paymentService.updatePrize(ifxPrize.prize_id, legacyId, v5Prizes[i], 1)
         }
+      } else {
+        await paymentService.createPrize(legacyId, i + 1, v5Prizes[i], constants.prizeTypesIds.Contest, 1, createdBy)
+      }
+    }
+    if (prizesFromIfx.length > v5Prizes.length) {
+      const prizesToDelete = _.filter(prizesFromIfx, p => p.place > v5Prizes.length)
+      for (const prizeToDelete of prizesToDelete) {
+        await paymentService.deletePrize(legacyId, prizeToDelete.prize_id)
       }
     }
   }
@@ -76,6 +85,8 @@ async function updateMemberPayments (legacyId, v5PrizeSets) {
     if (v5CheckPointPrizes.length !== checkpointPrizesFromIfx.number_of_submissions || v5CheckPointPrizes[0] !== _.toInteger(checkpointPrizesFromIfx.prize_amount)) {
       await paymentService.updatePrize(checkpointPrizesFromIfx.prize_id, legacyId, v5CheckPointPrizes[0], v5CheckPointPrizes.length)
     }
+  } else if (checkpointPrizesFromIfx) {
+    await paymentService.deletePrize(legacyId, checkpointPrizesFromIfx.prize_id)
   }
 }
 
@@ -580,7 +591,7 @@ async function processUpdate (message) {
 
     // Direct IFX modifications
     await syncChallengePhases(message.payload.legacyId, message.payload.phases)
-    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets)
+    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
     await associateChallengeTerms(message.payload.terms, message.payload.legacyId)
     await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
