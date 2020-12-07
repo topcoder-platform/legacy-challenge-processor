@@ -4,6 +4,7 @@ const util = require('util')
 const config = require('config')
 const helper = require('../common/helper')
 
+
 const QUERY_GET_CHALLENGE_TERMS = 'SELECT resource_role_id, terms_of_use_id FROM project_role_terms_of_use_xref WHERE project_id = %d'
 const QUERY_INSERT_CHALLENGE_TERMS = `INSERT INTO project_role_terms_of_use_xref
   (project_id, resource_role_id, terms_of_use_id, create_date, modify_date, sort_order, group_ind) 
@@ -59,7 +60,7 @@ async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyReso
 
     logger.debug(`Creating Terms - adding project info record for ${challengeLegacyId} ${legacyTermsId} === ${config.LEGACY_TERMS_NDA_ID}`)
     // add the project info record for the `Confidentiality Type`
-    const termsProjectInfoValue = (legacyTermsId.toString() === config.LEGACY_TERMS_NDA_ID.toString()) ? 'stanard_cca' : 'public'
+    const termsProjectInfoValue = (legacyTermsId.toString() === config.LEGACY_TERMS_NDA_ID.toString()) ? 'standard_cca' : 'public'
     const piquery = await prepare(connection, QUERY_INSERT_PROJECT_INFO_CHALLENGE_TERMS)
     await piquery.executeAsync([challengeLegacyId, termsProjectInfoValue, createdBy, updatedBy])
 
