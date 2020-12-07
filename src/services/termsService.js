@@ -57,9 +57,9 @@ async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyReso
     const piqueryDelete = await prepare(connection, QUERY_DELETE_PROJECT_INFO_CHALLENGE_TERMS)
     await piqueryDelete.executeAsync([challengeLegacyId])
 
-    logger.debug(`Creating Terms - adding project info record for ${challengeLegacyId}`)
+    logger.debug(`Creating Terms - adding project info record for ${challengeLegacyId} ${legacyTermsId} === ${config.LEGACY_TERMS_NDA_ID}`)
     // add the project info record for the `Confidentiality Type`
-    const termsProjectInfoValue = (legacyTermsId === config.LEGACY_TERMS_NDA_ID) ? 'stanard_cca' : 'public'
+    const termsProjectInfoValue = (legacyTermsId.toString() === config.LEGACY_TERMS_NDA_ID.toString()) ? 'stanard_cca' : 'public'
     const piquery = await prepare(connection, QUERY_INSERT_PROJECT_INFO_CHALLENGE_TERMS)
     await piquery.executeAsync([challengeLegacyId, termsProjectInfoValue, createdBy, updatedBy])
 
