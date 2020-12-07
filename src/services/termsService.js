@@ -1,8 +1,8 @@
 const logger = require('../common/logger')
 const _ = require('lodash')
 const util = require('util')
+const config = require('config')
 const helper = require('../common/helper')
-const { config } = require('process')
 
 const QUERY_GET_CHALLENGE_TERMS = 'SELECT resource_role_id, terms_of_use_id FROM project_role_terms_of_use_xref WHERE project_id = %d'
 const QUERY_INSERT_CHALLENGE_TERMS = `INSERT INTO project_role_terms_of_use_xref
