@@ -1,6 +1,7 @@
 require('../bootstrap')
 const util = require('util')
 const config = require('config')
+const request = require('superagent')
 const _ = require('lodash')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
@@ -64,21 +65,48 @@ async function createEntry (termsOfUseId, memberId) {
 }
 
 /**
+ * Gets all paginated results from `/terms/:id/users`
+ * @param {String} m2mToken the m2m token
+ */
+async function getAllTermUsers (m2mToken) {
+  let allData = []
+  // get search is paginated, we need to get all pages' data
+  let page = 1
+  while (true) {
+    const result = await request
+      .get(`${config.V5_TERMS_API_URL}/${config.SYNC_V5_TERM_UUID}/users`)
+      .query({ page, perPage: 100 })
+      .set('Authorization', `Bearer ${m2mToken}`)
+      .set('Content-Type', 'application/json')
+      .set('Accept', 'application/json')
+
+    const users = _.get(result, 'body.result', [])
+    if (users.length === 0) {
+      break
+    }
+    allData = allData.concat(users)
+    page += 1
+    if (result.headers['x-total-pages'] && page > Number(result.headers['x-total-pages'])) {
+      break
+    }
+  }
+  return allData
+}
+
+/**
  * Application entry point
  */
 async function main () {
   try {
-    let res
     const m2mToken = await helper.getM2MToken()
     logger.info(`Fetching details for term ${config.SYNC_V5_TERM_UUID}`)
-    res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.SYNC_V5_TERM_UUID}`, m2mToken)
+    const res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.SYNC_V5_TERM_UUID}`, m2mToken)
     const legacyTermId = _.get(res, 'body.legacyId')
     if (!legacyTermId) {
       throw new Error(`Term ${config.SYNC_V5_TERM_UUID} does not have a legacyId`)
     }
     logger.info(`Fetching users that have agreed to ${config.SYNC_V5_TERM_UUID}`)
-    res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.SYNC_V5_TERM_UUID}/users`, m2mToken)
-    const v5Entries = _.get(res, 'body.result', [])
+    const v5Entries = await getAllTermUsers(m2mToken)
     logger.debug(`Found ${v5Entries.length} users`)
 
     logger.info(`Fetching users from legacy for ID: ${legacyTermId}`)
