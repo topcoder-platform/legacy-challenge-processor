@@ -7,7 +7,7 @@ const logger = require('../common/logger')
 const helper = require('../common/helper')
 
 const QUERY_GET_ENTRIES = 'SELECT user_id FROM user_terms_of_use_xref WHERE terms_of_use_id = %d'
-const QUERY_INSERT_ENTRY = 'INSERT INTO user_terms_of_use_xref (user_id, terms_of_use_id, create_date, modify_date) VALUES (?, ?, ?, ?)'
+const QUERY_INSERT_ENTRY = 'INSERT INTO user_terms_of_use_xref (user_id, terms_of_use_id, create_date, modify_date) VALUES (?, ?, CURRENT, CURRENT)'
 
 /**
  * Prepare Informix statement
@@ -49,9 +49,12 @@ async function createEntry (termsOfUseId, memberId) {
   let result = null
   try {
     // await connection.beginTransactionAsync()
-    const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '').split('.')[0]
     const query = await prepare(connection, QUERY_INSERT_ENTRY)
-    result = await query.executeAsync([termsOfUseId, memberId, currentDateIso, currentDateIso])
+    if (config.SYNC_V5_WRITE_ENABLED) {
+      result = await query.executeAsync([memberId, termsOfUseId])
+    } else {
+      logger.debug(`INSERT INTO user_terms_of_use_xref (user_id, terms_of_use_id, create_date, modify_date) VALUES (${memberId}, ${termsOfUseId}, CURRENT, CURRENT)`)
+    }
     // await connection.commitTransactionAsync()
   } catch (e) {
     logger.error(`Error in 'createEntry' ${e}, rolling back transaction`)
@@ -114,12 +117,7 @@ async function main () {
     logger.debug(`Found ${legacyIntries.length} users`)
     for (const memberId of v5Entries) {
       if (legacyIntries.indexOf(memberId) === -1) {
-        if (config.SYNC_V5_WRITE_ENABLED) {
-          await createEntry(legacyTermId, memberId)
-        } else {
-          const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '').split('.')[0]
-          logger.debug(`INSERT INTO user_terms_of_use_xref (user_id, terms_of_use_id, create_date, modify_date) VALUES (${legacyTermId}, ${memberId}, ${currentDateIso}, ${currentDateIso})`)
-        }
+        await createEntry(legacyTermId, memberId)
       }
     }
     logger.info('Completed!')
