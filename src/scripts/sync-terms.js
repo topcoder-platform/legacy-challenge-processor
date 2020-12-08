@@ -70,14 +70,14 @@ async function main () {
   try {
     let res
     const m2mToken = await helper.getM2MToken()
-    logger.info(`Fetching details for term ${config.V5_TERM_UUID}`)
-    res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.V5_TERM_UUID}`, m2mToken)
+    logger.info(`Fetching details for term ${config.SYNC_V5_TERM_UUID}`)
+    res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.SYNC_V5_TERM_UUID}`, m2mToken)
     const legacyTermId = _.get(res, 'body.legacyId')
     if (!legacyTermId) {
-      throw new Error(`Term ${config.V5_TERM_UUID} does not have a legacyId`)
+      throw new Error(`Term ${config.SYNC_V5_TERM_UUID} does not have a legacyId`)
     }
-    logger.info(`Fetching users that have agreed to ${config.V5_TERM_UUID}`)
-    res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.V5_TERM_UUID}/users`, m2mToken)
+    logger.info(`Fetching users that have agreed to ${config.SYNC_V5_TERM_UUID}`)
+    res = await helper.getRequest(`${config.V5_TERMS_API_URL}/${config.SYNC_V5_TERM_UUID}/users`, m2mToken)
     const v5Entries = _.get(res, 'body.result', [])
     logger.debug(`Found ${v5Entries.length} users`)
 
@@ -86,7 +86,12 @@ async function main () {
     logger.debug(`Found ${legacyIntries.length} users`)
     for (const memberId of v5Entries) {
       if (legacyIntries.indexOf(memberId) === -1) {
-        await createEntry(legacyTermId, memberId)
+        if (config.SYNC_V5_WRITE_ENABLED) {
+          await createEntry(legacyTermId, memberId)
+        } else {
+          const currentDateIso = new Date().toISOString().replace('T', ' ').replace('Z', '').split('.')[0]
+          logger.debug(`INSERT INTO user_terms_of_use_xref (user_id, terms_of_use_id, create_date, modify_date) VALUES (${legacyTermId}, ${memberId}, ${currentDateIso}, ${currentDateIso})`)
+        }
       }
     }
     logger.info('Completed!')

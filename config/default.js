@@ -75,5 +75,6 @@ module.exports = {
   COPILOT_PAYMENT_TYPE: process.env.COPILOT_PAYMENT_TYPE || 'copilot',
 
   // V5 Term UUID
-  V5_TERM_UUID: process.env.V5_TERM_UUID || '317cd8f9-d66c-4f2a-8774-63c612d99cd4'
+  SYNC_V5_TERM_UUID: process.env.SYNC_V5_TERM_UUID || '317cd8f9-d66c-4f2a-8774-63c612d99cd4',
+  SYNC_V5_WRITE_ENABLED: process.env.SYNC_V5_WRITE_ENABLED || false
 }
