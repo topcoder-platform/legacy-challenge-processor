@@ -13,6 +13,7 @@ const constants = require('../constants')
 const groupService = require('./groupsService')
 const termsService = require('./termsService')
 const copilotPaymentService = require('./copilotPaymentService')
+const timelineService = require('./timelineService')
 
 /**
  * Get group information by V5 UUID
@@ -376,6 +377,7 @@ async function processCreate (message) {
     for (const resource of (challengeResourcesResponse.body || [])) {
       await helper.postBusEvent(config.RESOURCE_CREATE_TOPIC, _.pick(resource, ['id', 'challengeId', 'memberId', 'memberHandle', 'roleId', 'created', 'createdBy', 'updated', 'updatedBy', 'legacyId']))
     }
+    await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
   } catch (e) {
     logger.error('processCreate Catch', e)
