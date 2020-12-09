@@ -141,22 +141,16 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legac
  * @param {Array<Object{termsId, roleId}>} toBeDeleted the array of terms to be deleted
  * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
-async function associateChallengeTerms (v5Terms, legacyChallengeId) {
+async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, updatedBy) {
   const nda = _.find(v5Terms, e => e.id === config.V5_TERMS_NDA_ID)
   const legacyTermsArray = await termsService.getTermsForChallenge(legacyChallengeId)
   const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_NDA_ID))
-
-  // logger.debug(`V5 Terms ${JSON.stringify(v5Terms)}`)
-  // logger.debug(`V5 NDA Found ${nda} ${JSON.stringify(nda)}`)
-
-  // logger.debug(`Legacy Terms ${JSON.stringify(legacyTermsArray)}`)
-  // logger.debug(`Legacy NDA Found ${JSON.stringify(legacyNDA)}`)
 
   if (nda && nda.id && !legacyNDA) {
     logger.debug('Associate Challenge Terms - v5 NDA exist, not in legacy. Adding to Legacy.')
     const m2mToken = await helper.getM2MToken()
     const v5Term = await getV5Terms(nda.id, m2mToken)
-    return termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID)
+    return termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy)
   }
 
   if (!nda && legacyNDA && legacyNDA.id) {
@@ -566,6 +560,9 @@ async function processUpdate (message) {
       // Only make the PUT request to the API if the challenge was available on the V4 API otherwise this will throw an error
       await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
     }
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
+    await associateChallengeTerms(message.payload.terms, message.payload.legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
+    await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
 
     // Handle activating challenges and closing out tasks
     if (message.payload.status) {

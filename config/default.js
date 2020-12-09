@@ -72,5 +72,9 @@ module.exports = {
   LEGACY_TERMS_NDA_ID: process.env.LEGACY_TERMS_NDA_ID || 21343,
   LEGACY_SUBMITTER_ROLE_ID: process.env.LEGACY_SUBMITTER_ROLE_ID || 1,
 
-  COPILOT_PAYMENT_TYPE: process.env.COPILOT_PAYMENT_TYPE || 'copilot'
+  COPILOT_PAYMENT_TYPE: process.env.COPILOT_PAYMENT_TYPE || 'copilot',
+
+  // V5 Term UUID
+  SYNC_V5_TERM_UUID: process.env.SYNC_V5_TERM_UUID || '317cd8f9-d66c-4f2a-8774-63c612d99cd4',
+  SYNC_V5_WRITE_ENABLED: process.env.SYNC_V5_WRITE_ENABLED === 'true' || false
 }
