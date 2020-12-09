@@ -458,6 +458,7 @@ async function processCreate (message) {
     for (const resource of (challengeResourcesResponse.body || [])) {
       await helper.postBusEvent(config.RESOURCE_CREATE_TOPIC, _.pick(resource, ['id', 'challengeId', 'memberId', 'memberHandle', 'roleId', 'created', 'createdBy', 'updated', 'updatedBy', 'legacyId']))
     }
+    await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
   } catch (e) {
     logger.error('processCreate Catch', e)

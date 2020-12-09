@@ -9,6 +9,7 @@ const helper = require('../common/helper')
 const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
 const QUERY_GET_CHALLENGE_PHASES = 'SELECT project_phase_id, scheduled_start_time, scheduled_end_time, duration, phase_status_id, phase_type_id FROM project_phase WHERE project_id = %d'
 const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
+const QUERY_ENABLE_TIMELINE_NOTIFICATIONS = 'INSERT INTO project_info (project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, "11", "On", ?, CURRENT, ?, CURRENT)'
 
 /**
  * Prepare Informix statement
@@ -85,8 +86,33 @@ async function updatePhase (phaseId, challengeLegacyId, startTime, endTime, dura
   return result
 }
 
+/**
+ * Enable timeline notifications
+ * @param {Number} challengeLegacyId the legacy challenge ID
+ * @param {String} createdBy the created by
+ */
+async function enableTimelineNotifications (challengeLegacyId, createdBy) {
+  const connection = await helper.getInformixConnection()
+  let result = null
+  try {
+    // await connection.beginTransactionAsync()
+    const query = await prepare(connection, QUERY_ENABLE_TIMELINE_NOTIFICATIONS)
+    result = await query.executeAsync([challengeLegacyId, createdBy, createdBy])
+    // await connection.commitTransactionAsync()
+  } catch (e) {
+    logger.error(`Error in 'enableTimelineNotifications' ${e}, rolling back transaction`)
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    logger.info(`Notifications have been enabled for challenge ${challengeLegacyId}`)
+    await connection.closeAsync()
+  }
+  return result
+}
+
 module.exports = {
   getChallengePhases,
   getPhaseTypes,
-  updatePhase
+  updatePhase,
+  enableTimelineNotifications
 }
