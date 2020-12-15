@@ -509,6 +509,19 @@ async function processUpdate (message) {
       for (const metadataKey of _.keys(constants.supportedMetadata)) {
         const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
         if (entry) {
+          if (metadataKey === 'submissionLimit') {
+            // data here is JSON stringified
+            try {
+              const parsedEntryValue = JSON.parse(entry.value)
+              if (parsedEntryValue.limit) {
+                entry.value = parsedEntryValue.count
+              } else {
+                entry.value = null
+              }
+            } catch (e) {
+              entry.value = null
+            }
+          }
           try {
             await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
           } catch (e) {

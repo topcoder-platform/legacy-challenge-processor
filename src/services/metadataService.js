@@ -9,6 +9,7 @@ const helper = require('../common/helper')
 const QUERY_GET_ENTRY = 'SELECT value FROM project_info WHERE project_id = %d and project_info_type_id = %d'
 const QUERY_CREATE = 'INSERT INTO project_info (project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, ?, CURRENT, ?, CURRENT)'
 const QUERY_UPDATE = 'UPDATE project_info SET value = ?, modify_user = ?, modify_date = CURRENT WHERE project_info_type_id = ? AND project_id = ?'
+const QUERY_DELETE = 'DELETE FROM project_info WHERE project_id = ? and project_info_type_id = ?'
 
 /**
  * Prepare Informix statement
@@ -56,9 +57,15 @@ async function createOrUpdateMetadata (challengeLegacyId, typeId, value, created
     // await connection.beginTransactionAsync()
     const [existing] = await getMetadataEntry(challengeLegacyId, typeId)
     if (existing) {
-      logger.info(`Metadata ${typeId} exists. Will update`)
-      const query = await prepare(connection, QUERY_UPDATE)
-      result = await query.executeAsync([value, createdBy, typeId, challengeLegacyId])
+      if (value) {
+        logger.info(`Metadata ${typeId} exists. Will update`)
+        const query = await prepare(connection, QUERY_UPDATE)
+        result = await query.executeAsync([value, createdBy, typeId, challengeLegacyId])
+      } else {
+        logger.info(`Metadata ${typeId} exists. Will delete`)
+        const query = await prepare(connection, QUERY_DELETE)
+        result = await query.executeAsync([challengeLegacyId, typeId])
+      }
     } else {
       logger.info(`Metadata ${typeId} does not exist. Will create`)
       const query = await prepare(connection, QUERY_CREATE)
