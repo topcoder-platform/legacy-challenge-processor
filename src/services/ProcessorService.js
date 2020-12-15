@@ -14,6 +14,7 @@ const groupService = require('./groupsService')
 const termsService = require('./termsService')
 const copilotPaymentService = require('./copilotPaymentService')
 const timelineService = require('./timelineService')
+const metadataService = require('./metadataService')
 
 /**
  * Get group information by V5 UUID
@@ -306,6 +307,21 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
 
+    if (payload.metadata && payload.metadata.length > 0) {
+      const fileTypes = _.find(payload.metadata, meta => meta.name === 'fileTypes')
+      if (fileTypes) {
+        if (_.isArray(fileTypes.value)) {
+          data.fileTypes = fileTypes.value
+        } else {
+          try {
+            data.fileTypes = JSON.parse(fileTypes.value)
+          } catch (e) {
+            data.fileTypes = []
+          }
+        }
+      }
+    }
+
     return data
   } catch (err) {
     // Debugging
@@ -486,6 +502,15 @@ async function processUpdate (message) {
     await associateChallengeTerms(message.payload.terms, message.payload.legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
     await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
 
+    // Update metadata in IFX
+    if (message.payload.metadata && message.payload.metadata.length > 0) {
+      for (const metadataKey of _.keys(constants.supportedMetadata)) {
+        const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
+        if (entry) {
+          await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+        }
+      }
+    }
     if (message.payload.status) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
