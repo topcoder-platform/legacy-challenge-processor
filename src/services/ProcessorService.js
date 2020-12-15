@@ -509,7 +509,11 @@ async function processUpdate (message) {
       for (const metadataKey of _.keys(constants.supportedMetadata)) {
         const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
         if (entry) {
-          await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+          try {
+            await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+          } catch (e) {
+            logger.warn(`Failed to set ${metadataKey} (${constants.supportedMetadata[metadataKey]})`)
+          }
         }
       }
     }
