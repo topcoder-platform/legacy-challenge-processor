@@ -32,7 +32,7 @@ async function getMetadataEntry (challengeLegacyId, typeId) {
   const connection = await helper.getInformixConnection()
   let result = null
   try {
-    result = await connection.queryAsync(util.format(QUERY_GET_ENTRY, challengeLegacyId, 11))
+    result = await connection.queryAsync(util.format(QUERY_GET_ENTRY, challengeLegacyId, typeId))
   } catch (e) {
     logger.error(`Error in 'getMetadataEntry' ${e}`)
     throw e
@@ -56,9 +56,11 @@ async function createOrUpdateMetadata (challengeLegacyId, typeId, value, created
     // await connection.beginTransactionAsync()
     const [existing] = await getMetadataEntry(challengeLegacyId, typeId)
     if (existing) {
+      logger.info(`Metadata ${typeId} exists. Will update`)
       const query = await prepare(connection, QUERY_UPDATE)
       result = await query.executeAsync([value, createdBy, typeId, challengeLegacyId])
     } else {
+      logger.info(`Metadata ${typeId} does not exist. Will create`)
       const query = await prepare(connection, QUERY_CREATE)
       result = await query.executeAsync([challengeLegacyId, typeId, value, createdBy, createdBy])
     }
