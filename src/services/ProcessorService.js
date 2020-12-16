@@ -213,7 +213,7 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
     const data = {
       ...legacyTrackInfo,
       name: payload.name,
-      reviewType: _.get(payload, 'legacy.reviewType'),
+      reviewType: _.get(payload, 'legacy.reviewType', 'INTERNAL'),
       projectId,
       status: payload.status
     }
