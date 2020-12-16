@@ -43,27 +43,28 @@ async function getTermsForChallenge (challengeLegacyId) {
   return _.map(result, r => ({ id: r.terms_of_use_id, roleId: r.resource_role_id }))
 }
 
-async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyResourceRoleId, createdBy, updatedBy) {
+async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyResourceRoleId, createdBy, updatedBy, isNDA = false) {
   const connection = await helper.getInformixConnection()
   let result = null
   try {
-    logger.debug(`Creating Terms ${legacyTermsId} for Challenge ${challengeLegacyId}`)
+    logger.debug(`Creating Terms ${legacyTermsId} for Challenge ${challengeLegacyId} - NDA Flag: ${isNDA === true ? 'true' : 'false'}`)
     await connection.beginTransactionAsync()
     // create association
     const query = await prepare(connection, QUERY_INSERT_CHALLENGE_TERMS)
     result = await query.executeAsync([challengeLegacyId, legacyResourceRoleId, legacyTermsId])
 
-    logger.debug(`Creating Terms - deleting project info record for ${challengeLegacyId}`)
-    // make sure there are no project info records
-    const piqueryDelete = await prepare(connection, QUERY_DELETE_PROJECT_INFO_CHALLENGE_TERMS)
-    await piqueryDelete.executeAsync([challengeLegacyId])
+    if (isNDA) {
+      logger.debug(`Creating Terms - deleting project info record for ${challengeLegacyId}`)
+      // make sure there are no project info records
+      const piqueryDelete = await prepare(connection, QUERY_DELETE_PROJECT_INFO_CHALLENGE_TERMS)
+      await piqueryDelete.executeAsync([challengeLegacyId])
 
-    logger.debug(`Creating Terms - adding project info record for ${challengeLegacyId} ${legacyTermsId} === ${config.LEGACY_TERMS_NDA_ID}`)
-    // add the project info record for the `Confidentiality Type`
-    const termsProjectInfoValue = (legacyTermsId.toString() === config.LEGACY_TERMS_NDA_ID.toString()) ? 'standard_cca' : 'public'
-    const piquery = await prepare(connection, QUERY_INSERT_PROJECT_INFO_CHALLENGE_TERMS)
-    await piquery.executeAsync([challengeLegacyId, termsProjectInfoValue, createdBy, updatedBy])
-
+      logger.debug(`Creating Terms - adding project info record for ${challengeLegacyId} ${legacyTermsId} === ${config.LEGACY_TERMS_NDA_ID}`)
+      // add the project info record for the `Confidentiality Type`
+      const termsProjectInfoValue = (legacyTermsId.toString() === config.LEGACY_TERMS_NDA_ID.toString()) ? 'standard_cca' : 'public'
+      const piquery = await prepare(connection, QUERY_INSERT_PROJECT_INFO_CHALLENGE_TERMS)
+      await piquery.executeAsync([challengeLegacyId, termsProjectInfoValue, createdBy, updatedBy])
+    }
     await connection.commitTransactionAsync()
   } catch (e) {
     logger.error(`Error in 'addTermsToChallenge' ${e}, rolling back transaction`)
@@ -76,7 +77,7 @@ async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyReso
   return result
 }
 
-async function removeTermsFromChallenge (challengeLegacyId, legacyTermsId, legacyResourceRoleId) {
+async function removeTermsFromChallenge (challengeLegacyId, legacyTermsId, legacyResourceRoleId, isNDA = false) {
   const connection = await helper.getInformixConnection()
   let result = null
   try {
@@ -84,8 +85,10 @@ async function removeTermsFromChallenge (challengeLegacyId, legacyTermsId, legac
     const query = await prepare(connection, QUERY_DELETE_CHALLENGE_TERMS)
     result = await query.executeAsync([challengeLegacyId, legacyResourceRoleId, legacyTermsId])
 
-    const piquery = await prepare(connection, QUERY_DELETE_PROJECT_INFO_CHALLENGE_TERMS)
-    await piquery.executeAsync([challengeLegacyId])
+    if (isNDA) {
+      const piquery = await prepare(connection, QUERY_DELETE_PROJECT_INFO_CHALLENGE_TERMS)
+      await piquery.executeAsync([challengeLegacyId])
+    }
 
     await connection.commitTransactionAsync()
   } catch (e) {
