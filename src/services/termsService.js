@@ -47,7 +47,7 @@ async function addTermsToChallenge (challengeLegacyId, legacyTermsId, legacyReso
   const connection = await helper.getInformixConnection()
   let result = null
   try {
-    logger.debug(`Creating Terms ${legacyTermsId} for Challenge ${challengeLegacyId}`)
+    logger.debug(`Creating Terms ${legacyTermsId} for Challenge ${challengeLegacyId} - NDA Flag: ${isNDA === true ? 'true' : 'false'}`)
     await connection.beginTransactionAsync()
     // create association
     const query = await prepare(connection, QUERY_INSERT_CHALLENGE_TERMS)

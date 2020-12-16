@@ -75,11 +75,11 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
   const standardTerms = _.find(v5Terms, e => e.id === config.V5_TERMS_STANDARD_ID)
   const legacyStandardTerms = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_STANDARD_ID))
 
+  const m2mToken = await helper.getM2MToken()
   if (standardTerms && standardTerms.id && !legacyStandardTerms) {
     logger.debug('Associate Challenge Terms - v5 Standard Terms exist, not in legacy. Adding to Legacy.')
-    const m2mToken = await helper.getM2MToken()
-    const v5Term = await getV5Terms(standardTerms.id, m2mToken)
-    await termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy)
+    const v5StandardTerm = await getV5Terms(standardTerms.id, m2mToken)
+    await termsService.addTermsToChallenge(legacyChallengeId, v5StandardTerm.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy)
   } else if (!standardTerms && legacyStandardTerms && legacyStandardTerms.id) {
     logger.debug('Associate Challenge Terms - Legacy NDA exist, not in V5. Removing from Legacy.')
     await termsService.removeTermsFromChallenge(legacyChallengeId, legacyStandardTerms.id, config.LEGACY_SUBMITTER_ROLE_ID)
@@ -87,9 +87,8 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
 
   if (nda && nda.id && !legacyNDA) {
     logger.debug('Associate Challenge Terms - v5 NDA exist, not in legacy. Adding to Legacy.')
-    const m2mToken = await helper.getM2MToken()
-    const v5Term = await getV5Terms(nda.id, m2mToken)
-    await termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy, true)
+    const v5NDATerm = await getV5Terms(nda.id, m2mToken)
+    await termsService.addTermsToChallenge(legacyChallengeId, v5NDATerm.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy, true)
   } else if (!nda && legacyNDA && legacyNDA.id) {
     logger.debug('Associate Challenge Terms - Legacy NDA exist, not in V5. Removing from Legacy.')
     await termsService.removeTermsFromChallenge(legacyChallengeId, legacyNDA.id, config.LEGACY_SUBMITTER_ROLE_ID, true)
@@ -215,7 +214,7 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
     const data = {
       ...legacyTrackInfo,
       name: payload.name,
-      reviewType: _.get(payload, 'legacy.reviewType'),
+      reviewType: _.get(payload, 'legacy.reviewType', 'INTERNAL'),
       projectId,
       status: payload.status
     }
@@ -384,6 +383,12 @@ async function processCreate (message) {
   logger.debug('processCreate :: beforeTry')
   try {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+
+    let forumId = 0
+    if (message.payload.legacy && message.payload.legacy.forumId) {
+      forumId = message.payload.legacy.forumId
+    }
+    forumId = _.get(newChallenge, 'body.result.content.forumId', forumId)
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
@@ -395,7 +400,7 @@ async function processCreate (message) {
         subTrack: saveDraftContestDTO.subTrack,
         isTask: saveDraftContestDTO.task || false,
         directProjectId: newChallenge.body.result.content.projectId,
-        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId)
+        forumId
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
