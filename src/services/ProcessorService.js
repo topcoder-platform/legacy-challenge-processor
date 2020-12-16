@@ -68,23 +68,34 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legac
  * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
 async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, updatedBy) {
-  const nda = _.find(v5Terms, e => e.id === config.V5_TERMS_NDA_ID)
   const legacyTermsArray = await termsService.getTermsForChallenge(legacyChallengeId)
+  const nda = _.find(v5Terms, e => e.id === config.V5_TERMS_NDA_ID)
   const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_NDA_ID))
+
+  const standardTerms = _.find(v5Terms, e => e.id === config.V5_TERMS_STANDARD_ID)
+  const legacyStandardTerms = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_STANDARD_ID))
+
+  if (standardTerms && standardTerms.id && !legacyStandardTerms) {
+    logger.debug('Associate Challenge Terms - v5 Standard Terms exist, not in legacy. Adding to Legacy.')
+    const m2mToken = await helper.getM2MToken()
+    const v5Term = await getV5Terms(standardTerms.id, m2mToken)
+    await termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy)
+  } else if (!standardTerms && legacyStandardTerms && legacyStandardTerms.id) {
+    logger.debug('Associate Challenge Terms - Legacy NDA exist, not in V5. Removing from Legacy.')
+    await termsService.removeTermsFromChallenge(legacyChallengeId, legacyStandardTerms.id, config.LEGACY_SUBMITTER_ROLE_ID)
+  }
 
   if (nda && nda.id && !legacyNDA) {
     logger.debug('Associate Challenge Terms - v5 NDA exist, not in legacy. Adding to Legacy.')
     const m2mToken = await helper.getM2MToken()
     const v5Term = await getV5Terms(nda.id, m2mToken)
-    return termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy)
-  }
-
-  if (!nda && legacyNDA && legacyNDA.id) {
+    await termsService.addTermsToChallenge(legacyChallengeId, v5Term.legacyId, config.LEGACY_SUBMITTER_ROLE_ID, createdBy, updatedBy, true)
+  } else if (!nda && legacyNDA && legacyNDA.id) {
     logger.debug('Associate Challenge Terms - Legacy NDA exist, not in V5. Removing from Legacy.')
-    return termsService.removeTermsFromChallenge(legacyChallengeId, legacyNDA.id, config.LEGACY_SUBMITTER_ROLE_ID)
+    await termsService.removeTermsFromChallenge(legacyChallengeId, legacyNDA.id, config.LEGACY_SUBMITTER_ROLE_ID, true)
   }
 
-  logger.debug('Associate Challenge Terms - Nothing to Do')
+  // logger.debug('Associate Challenge Terms - Nothing to Do')
 }
 
 /**
@@ -507,7 +518,24 @@ async function processUpdate (message) {
       for (const metadataKey of _.keys(constants.supportedMetadata)) {
         const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
         if (entry) {
-          await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+          if (metadataKey === 'submissionLimit') {
+            // data here is JSON stringified
+            try {
+              const parsedEntryValue = JSON.parse(entry.value)
+              if (parsedEntryValue.limit) {
+                entry.value = parsedEntryValue.count
+              } else {
+                entry.value = null
+              }
+            } catch (e) {
+              entry.value = null
+            }
+          }
+          try {
+            await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+          } catch (e) {
+            logger.warn(`Failed to set ${metadataKey} (${constants.supportedMetadata[metadataKey]})`)
+          }
         }
       }
     }
