@@ -367,6 +367,12 @@ async function processCreate (message) {
   logger.debug('processCreate :: beforeTry')
   try {
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+
+    let forumId = 0
+    if (message.payload.legacy && message.payload.legacy.forumId) {
+      forumId = message.payload.legacy.forumId
+    }
+    forumId = _.get(newChallenge, 'body.result.content.forumId', forumId)
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
@@ -378,7 +384,7 @@ async function processCreate (message) {
         subTrack: saveDraftContestDTO.subTrack,
         isTask: saveDraftContestDTO.task || false,
         directProjectId: newChallenge.body.result.content.projectId,
-        forumId: _.get(newChallenge, 'body.result.content.forumId', message.payload.legacy.forumId)
+        forumId
       },
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
