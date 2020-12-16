@@ -78,8 +78,8 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
   const standardTerms = _.find(v5Terms, e => e.id === config.V5_TERMS_STANDARD_ID)
   const legacyStandardTerms = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_STANDARD_ID))
 
-  logger.debug(`NDA: ${JSON.stringify(nda)}`)
-  logger.debug(`Standard Terms: ${JSON.stringify(standardTerms)}`)
+  logger.debug(`NDA: ${config.V5_TERMS_NDA_ID} - ${JSON.stringify(nda)}`)
+  logger.debug(`Standard Terms: ${config.V5_TERMS_STANDARD_ID} - ${JSON.stringify(standardTerms)}`)
   logger.debug(`Legacy NDA: ${JSON.stringify(legacyNDA)}`)
   logger.debug(`Legacy Standard Terms: ${JSON.stringify(legacyStandardTerms)}`)
 
