@@ -31,7 +31,9 @@ async function getGroup (v5GroupId, m2mToken) {
  * @param {String} m2mToken token for accessing the API
  */
 async function getV5Terms (v5TermsId, m2mToken) {
+  logger.debug(`Get V5 Terms: ${config.V5_TERMS_API_URL}/${v5TermsId}`)
   const response = await helper.getRequest(`${config.V5_TERMS_API_URL}/${v5TermsId}`, m2mToken)
+  logger.debug(`Get v5 terms response: ${JSON.stringify(response.body)}`)
   return response.body
 }
 
@@ -67,12 +69,19 @@ async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legac
  * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
 async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, updatedBy) {
+  logger.debug(`v5Terms Terms Array: ${JSON.stringify(v5Terms)}`)
   const legacyTermsArray = await termsService.getTermsForChallenge(legacyChallengeId)
+  logger.debug(`Legacy Terms Array: ${JSON.stringify(legacyTermsArray)}`)
   const nda = _.find(v5Terms, e => e.id === config.V5_TERMS_NDA_ID)
   const legacyNDA = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_NDA_ID))
 
   const standardTerms = _.find(v5Terms, e => e.id === config.V5_TERMS_STANDARD_ID)
   const legacyStandardTerms = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_STANDARD_ID))
+
+  logger.debug(`NDA: ${JSON.stringify(nda)}`)
+  logger.debug(`Standard Terms: ${JSON.stringify(standardTerms)}`)
+  logger.debug(`Legacy NDA: ${JSON.stringify(legacyNDA)}`)
+  logger.debug(`Legacy Standard Terms: ${JSON.stringify(legacyStandardTerms)}`)
 
   const m2mToken = await helper.getM2MToken()
   if (standardTerms && standardTerms.id && !legacyStandardTerms) {
