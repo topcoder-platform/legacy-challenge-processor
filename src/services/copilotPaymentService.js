@@ -5,6 +5,7 @@ const helper = require('../common/helper')
 
 const COPILOT_PAYMENT_PROJECT_INFO_ID = 49
 const COPILOT_PAYMENT_RESOURCE_INFO_ID = 7
+const COPILOT_PAYMENT_TYPE_ID = 15
 const COPILOT_RESOURCE_ROLE_ID = 14
 
 const QUERY_GET_COPILOT_RESOURCE_FOR_CHALLENGE = `SELECT limit 1 resource_id as resourceid FROM resource WHERE project_id = %d AND resource_role_id = ${COPILOT_RESOURCE_ROLE_ID}`
@@ -32,6 +33,10 @@ const QUERY_DELETE_COPILOT_PAYMENT = `DELETE FROM project_info WHERE project_inf
 const QUERY_UPDATE_COPILOT_RESOURCE_PAYMENT = `UPDATE resource_info SET value = ?, modify_user = ?, modify_date = CURRENT WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_RESOURCE_INFO_ID}`
 // const QUERY_DELETE_COPILOT_RESOURCE_PAYMENT = `DELETE FROM resource_info WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_RESOURCE_INFO_ID}`
 
+const QUERY_SELECT_PAYMENT_TYPE = `SELECT value FROM resource_info WHERE project_info_type_id = ${COPILOT_PAYMENT_TYPE_ID} AND resource_id = %d`
+const QUERY_INSERT_PAYMENT_TYPE = `INSERT INTO resource_info (resource_id, resource_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, ${COPILOT_PAYMENT_TYPE_ID}, ?, ?, CURRENT, ?, CURRENT)`
+const QUERY_UPDATE_PAYMENT_TYPE = `UPDATE resource_info SET value = ?, modify_user = ?, modify_date = CURRENT WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID}`
+
 /**
  * Prepare Informix statement
  * @param {Object} connection the Informix connection
@@ -58,6 +63,13 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
     const copilotResourceId = await getCopilotResourceId(connection, challengeLegacyId)
     const copilotPayment = await getCopilotPayment(connection, challengeLegacyId)
     if (amount != null && amount >= 0) {
+      // Make sure the payment type is set to manual
+      const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
+      if (!paymentType) {
+        await createCopilotPaymentType(connection, copilotResourceId, true, updatedBy || createdBy)
+      } else if (_.toLower(_.toString(paymentType.value)) === 'false') {
+        await updateCopilotPaymentType(connection, copilotResourceId, true, updatedBy || createdBy)
+      }
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
         return updateCopilotPayment(connection, copilotResourceId, challengeLegacyId, amount, updatedBy)
@@ -76,6 +88,42 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
   } finally {
     await connection.closeAsync()
   }
+}
+
+/**
+ * Gets the copilot payment type for a legacyId
+ * @param {Object} connection the connection
+ * @param {Number} resourceId the resource ID
+ */
+async function getCopilotPaymentType (connection, resourceId) {
+  const result = await connection.queryAsync(util.format(QUERY_SELECT_PAYMENT_TYPE, resourceId))
+  return _.get(result, '[0]', null)
+}
+
+/**
+ * Create the copilot payment type record
+ * @param {Object} connection the connection
+ * @param {Number} resourceId the resource ID
+ * @param {Boolean} value the value
+ * @param {String} createdBy the create user handle
+ */
+async function createCopilotPaymentType (connection, resourceId, value, createdBy) {
+  const query = await prepare(connection, QUERY_INSERT_PAYMENT_TYPE)
+  logger.debug(`Create Copilot Payment Type Values: ${[resourceId, value, createdBy, createdBy]}`)
+  await query.executeAsync([resourceId, value, createdBy, createdBy])
+}
+
+/**
+ * Update the copilot payment type record
+ * @param {Object} connection the connection
+ * @param {Number} resourceId the resource ID
+ * @param {Boolean} value the value
+ * @param {String} createdBy the create user handle
+ */
+async function updateCopilotPaymentType (connection, resourceId, value, createdBy) {
+  const query = await prepare(connection, QUERY_UPDATE_PAYMENT_TYPE)
+  logger.debug(`Update Copilot Payment Type Values: ${[value, createdBy, resourceId]}`)
+  await query.executeAsync([value, createdBy, resourceId])
 }
 
 /**
