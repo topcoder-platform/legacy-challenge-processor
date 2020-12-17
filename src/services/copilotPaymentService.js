@@ -67,7 +67,7 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
       const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
       if (!paymentType) {
         await createCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
-      } else if (_.toLower(_.toString(paymentType.value)) === 'false') {
+      } else if (_.toLower(_.toString(paymentType.value)) !== 'true') {
         await updateCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
       }
       if (copilotPayment) {
@@ -97,6 +97,7 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
  */
 async function getCopilotPaymentType (connection, resourceId) {
   const result = await connection.queryAsync(util.format(QUERY_SELECT_PAYMENT_TYPE, resourceId))
+  logger.debug(`Result: ${JSON.stringify(result, null, 2)}`)
   return _.get(result, '[0]', null)
 }
 
