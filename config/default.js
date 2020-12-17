@@ -78,6 +78,8 @@ module.exports = {
 
   COPILOT_PAYMENT_TYPE: process.env.COPILOT_PAYMENT_TYPE || 'copilot',
 
+  COPILOT_ROLE_ID: process.env.COPILOT_ROLE_ID || 'cfe12b3f-2a24-4639-9d8b-ec86726f76bd',
+
   // V5 Term UUID
   SYNC_V5_TERM_UUID: process.env.SYNC_V5_TERM_UUID || '317cd8f9-d66c-4f2a-8774-63c612d99cd4',
   SYNC_V5_WRITE_ENABLED: process.env.SYNC_V5_WRITE_ENABLED === 'true' || false
