@@ -66,9 +66,9 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
       // Make sure the payment type is set to manual
       const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
       if (!paymentType) {
-        await createCopilotPaymentType(connection, copilotResourceId, true, updatedBy || createdBy)
+        await createCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
       } else if (_.toLower(_.toString(paymentType.value)) === 'false') {
-        await updateCopilotPaymentType(connection, copilotResourceId, true, updatedBy || createdBy)
+        await updateCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
       }
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
