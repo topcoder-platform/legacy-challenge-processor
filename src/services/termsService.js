@@ -4,7 +4,6 @@ const util = require('util')
 const config = require('config')
 const helper = require('../common/helper')
 
-
 const QUERY_GET_CHALLENGE_TERMS = 'SELECT resource_role_id, terms_of_use_id FROM project_role_terms_of_use_xref WHERE project_id = %d'
 const QUERY_INSERT_CHALLENGE_TERMS = `INSERT INTO project_role_terms_of_use_xref
   (project_id, resource_role_id, terms_of_use_id, create_date, modify_date, sort_order, group_ind) 
