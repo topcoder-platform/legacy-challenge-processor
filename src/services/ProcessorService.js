@@ -14,6 +14,7 @@ const groupService = require('./groupsService')
 const termsService = require('./termsService')
 const copilotPaymentService = require('./copilotPaymentService')
 const timelineService = require('./timelineService')
+const metadataService = require('./metadataService')
 
 /**
  * Get group information by V5 UUID
@@ -107,16 +108,27 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
 
 /**
  * Set the copilot payment on legacy
+ * @param {String} challengeId the V5 challenge ID
  * @param {Number|String} legacyChallengeId the legacy challenge ID
  * @param {Array} prizeSets the prizeSets array
  * @param {String} createdBy the created by handle
  * @param {String} updatedBy the updated by handle
+ * @param {String} m2mToken the m2m token
  */
-async function setCopilotPayment (legacyChallengeId, prizeSets = [], createdBy, updatedBy) {
+async function setCopilotPayment (challengeId, legacyChallengeId, prizeSets = [], createdBy, updatedBy, m2mToken) {
   try {
     const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', null)
-    logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId}`)
-    await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
+    if (copilotPayment) {
+      logger.debug('Fetching challenge copilot...')
+      const res = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeId}&roleId=${config.COPILOT_ROLE_ID}`, m2mToken)
+      const [copilotResource] = res.body
+      if (!copilotResource) {
+        logger.warn(`Copilot does not exist for challenge ${challengeId} (legacy: ${legacyChallengeId})`)
+        return
+      }
+      logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
+      await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
+    }
   } catch (e) {
     logger.error('Failed to set the copilot payment!')
     logger.debug(e)
@@ -325,6 +337,21 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
     }
 
+    if (payload.metadata && payload.metadata.length > 0) {
+      const fileTypes = _.find(payload.metadata, meta => meta.name === 'fileTypes')
+      if (fileTypes) {
+        if (_.isArray(fileTypes.value)) {
+          data.fileTypes = fileTypes.value
+        } else {
+          try {
+            data.fileTypes = JSON.parse(fileTypes.value)
+          } catch (e) {
+            data.fileTypes = []
+          }
+        }
+      }
+    }
+
     return data
   } catch (err) {
     // Debugging
@@ -385,7 +412,7 @@ async function processCreate (message) {
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
-    await setCopilotPayment(newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
+    await setCopilotPayment(challengeUuid, newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -466,7 +493,7 @@ async function processUpdate (message) {
     return
   } else if (!message.payload.legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
-    return processCreate(message)
+    await processCreate(message)
   }
   const m2mToken = await helper.getM2MToken()
 
@@ -506,12 +533,45 @@ async function processUpdate (message) {
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
-    await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    try {
+      if (challenge) {
+        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+      }
+    } catch (e) {
+      logger.warn('Failed to update the challenge via the V4 API')
+      logger.error(e)
+    }
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
-    await associateChallengeTerms(message.payload.terms, message.payload.legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
-    await setCopilotPayment(message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'))
+    await associateChallengeTerms(message.payload.terms, message.payload.legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await setCopilotPayment(message.payload.id, message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
-    if (message.payload.status) {
+    // Update metadata in IFX
+    if (message.payload.metadata && message.payload.metadata.length > 0) {
+      for (const metadataKey of _.keys(constants.supportedMetadata)) {
+        const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
+        if (entry) {
+          if (metadataKey === 'submissionLimit') {
+            // data here is JSON stringified
+            try {
+              const parsedEntryValue = JSON.parse(entry.value)
+              if (parsedEntryValue.limit) {
+                entry.value = parsedEntryValue.count
+              } else {
+                entry.value = null
+              }
+            } catch (e) {
+              entry.value = null
+            }
+          }
+          try {
+            await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+          } catch (e) {
+            logger.warn(`Failed to set ${metadataKey} (${constants.supportedMetadata[metadataKey]})`)
+          }
+        }
+      }
+    }
+    if (message.payload.status && challenge) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
         logger.info('Activating challenge...')
@@ -532,7 +592,11 @@ async function processUpdate (message) {
         }
       }
     }
-    await helper.forceV4ESFeeder(message.payload.legacyId)
+    try {
+      await helper.forceV4ESFeeder(message.payload.legacyId)
+    } catch (e) {
+      logger.warn('Failed to call V4 ES Feeder')
+    }
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
