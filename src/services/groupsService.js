@@ -4,11 +4,12 @@ const util = require('util')
 const helper = require('../common/helper')
 
 const QUERY_GET_ELIGIBILITY_ID = 'SELECT limit 1 * FROM contest_eligibility WHERE contest_id = %d'
+const QUERY_GET_SINGLE_ELIGIBILITY_ID = 'SELECT limit 1 * FROM contest_eligibility WHERE contest_id = %d AND group_id = %d'
 const QUERY_GET_GROUP_ELIGIBILITY_ID = 'SELECT limit 1 * FROM group_contest_eligibility WHERE contest_eligibility_id = %d AND group_id = %d'
 const QUERY_GET_GROUPS = 'SELECT group_id FROM group_contest_eligibility WHERE contest_eligibility_id = %d'
 const QUERY_GET_GROUPS_COUNT = 'SELECT count(*) as cnt FROM group_contest_eligibility WHERE contest_eligibility_id = %d'
 
-const QUERY_INSERT_CONTEST_ELIGIBILITY = 'INSERT INTO contest_eligibility (contest_eligibility_id, contest_id, is_studio) VALUES(contest_eligibility_seq.NEXTVAL, ?, 0)'
+const QUERY_INSERT_CONTEST_ELIGIBILITY = 'INSERT INTO contest_eligibility (contest_eligibility_id, contest_id, is_studio, group_id) VALUES(contest_eligibility_seq.NEXTVAL, ?, 0, ?)'
 const QUERY_INSERT_GROUP_CONTEST_ELIGIBILITY = 'INSERT INTO group_contest_eligibility (contest_eligibility_id, group_id) VALUES(?, ?)'
 const QUERY_DELETE_GROUP_CONTEST_ELIGIBILITY = 'DELETE FROM group_contest_eligibility WHERE contest_eligibility_id = ? AND group_id = ?'
 const QUERY_DELETE_CONTEST_ELIGIBILITY = 'DELETE FROM contest_eligibility WHERE contest_eligibility_id = ?'
@@ -53,9 +54,9 @@ async function addGroupToChallenge (challengeLegacyId, groupLegacyId) {
 
   try {
     await connection.beginTransactionAsync()
-    let eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId)
+    let eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId, groupLegacyId)
     if (!eligibilityId) {
-      eligibilityId = await createChallengeEligibilityRecord(connection, challengeLegacyId)
+      eligibilityId = await createChallengeEligibilityRecord(connection, challengeLegacyId, groupLegacyId)
     }
 
     const groupMappingExists = await groupEligbilityExists(connection, eligibilityId, groupLegacyId)
@@ -81,7 +82,7 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
 
   try {
     await connection.beginTransactionAsync()
-    const eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId)
+    const eligibilityId = await getChallengeEligibilityId(connection, challengeLegacyId, groupLegacyId)
     if (!eligibilityId) {
       throw new Error(`Eligibility not found for legacyId ${challengeLegacyId}`)
     }
@@ -113,12 +114,18 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
  * Gets the eligibility ID of a legacyId
  * @param {Object} connection
  * @param {Number} challengeLegacyId
+ * @param {Number} groupId
  * @returns {Object} { eligibilityId }
  */
-async function getChallengeEligibilityId (connection, challengeLegacyId) {
+async function getChallengeEligibilityId (connection, challengeLegacyId, groupId) {
   // get the challenge eligibility record, if one doesn't exist, create it and return the id
   // logger.info(`getChallengeEligibilityId Query: ${util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId)}`)
-  const result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
+  let result
+  if (groupId) {
+    result = await connection.queryAsync(util.format(QUERY_GET_SINGLE_ELIGIBILITY_ID, challengeLegacyId, groupId))
+  } else {
+    result = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
+  }
   // logger.info(`getChallengeEligibilityId Result: ${JSON.stringify(result)}`)
   return (result && result[0]) ? result[0].contest_eligibility_id : false
 }
@@ -136,9 +143,9 @@ async function groupEligbilityExists (connection, eligibilityId, groupLegacyId) 
   return (result && result[0]) || false
 }
 
-async function createChallengeEligibilityRecord (connection, challengeLegacyId) {
+async function createChallengeEligibilityRecord (connection, challengeLegacyId, groupId) {
   const query = await prepare(connection, QUERY_INSERT_CONTEST_ELIGIBILITY)
-  const result = await query.executeAsync([challengeLegacyId])
+  const result = await query.executeAsync([challengeLegacyId, groupId])
   if (result) {
     const idResult = await connection.queryAsync(util.format(QUERY_GET_ELIGIBILITY_ID, challengeLegacyId))
     return idResult[0].contest_eligibility_id
