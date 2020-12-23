@@ -167,11 +167,11 @@ async function createGroupContestEligibility (connection, eligibilityId, groupId
  */
 async function clearData (connection, eligibilityId, groupId) {
   let query
-  query = await prepare(connection, QUERY_DELETE_CONTEST_ELIGIBILITY)
-  await query.executeAsync([eligibilityId])
-
   query = await prepare(connection, QUERY_DELETE_GROUP_CONTEST_ELIGIBILITY)
   await query.executeAsync([eligibilityId, groupId])
+
+  query = await prepare(connection, QUERY_DELETE_CONTEST_ELIGIBILITY)
+  await query.executeAsync([eligibilityId])
 }
 
 module.exports = {
