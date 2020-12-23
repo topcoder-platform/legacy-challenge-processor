@@ -95,7 +95,7 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
     const eligibilityIds = await getChallengeEligibilityIds(connection, challengeLegacyId)
     if (eligibilityIds && eligibilityIds.length > 0) {
       const groups = await getGroupsForEligibilityIds(connection, eligibilityIds)
-      const groupToRemove = _.find(groups, g => group_id === groupLegacyId)
+      const groupToRemove = _.find(groups, g => g.group_id === groupLegacyId)
       if (groupToRemove) {
         await clearData(groupToRemove.contest_eligibility_id, groupToRemove.group_id)
       }
