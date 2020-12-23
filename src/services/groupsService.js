@@ -97,7 +97,7 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
       const groups = await getGroupsForEligibilityIds(connection, eligibilityIds)
       const groupToRemove = _.find(groups, g => g.group_id === groupLegacyId)
       if (groupToRemove) {
-        await clearData(groupToRemove.contest_eligibility_id, groupToRemove.group_id)
+        await clearData(connection, groupToRemove.contest_eligibility_id, groupToRemove.group_id)
       }
     }
     await connection.commitTransactionAsync()
@@ -161,10 +161,11 @@ async function createGroupContestEligibility (connection, eligibilityId, groupId
 
 /**
  * Removes entries from group_contest_eligibility and contest_eligibility
+ * @param {Object} connection the connection
  * @param {Number} eligibilityId the eligibility ID
  * @param {Number} groupId the group ID
  */
-async function clearData (eligibilityId, groupId) {
+async function clearData (connection, eligibilityId, groupId) {
   let query
   query = await prepare(connection, QUERY_DELETE_CONTEST_ELIGIBILITY)
   await query.executeAsync([eligibilityId])
