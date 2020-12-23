@@ -106,7 +106,7 @@ async function removeGroupFromChallenge (challengeLegacyId, groupLegacyId) {
     await connection.rollbackTransactionAsync()
     throw e
   } finally {
-    logger.info(`Group ${groupLegacyId} removed to challenge ${challengeLegacyId}`)
+    logger.info(`Group ${groupLegacyId} removed from challenge ${challengeLegacyId}`)
     await connection.closeAsync()
   }
 }
