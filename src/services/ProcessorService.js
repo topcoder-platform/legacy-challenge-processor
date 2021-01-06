@@ -402,7 +402,8 @@ async function processCreate (message) {
 
   logger.debug('processCreate :: beforeTry')
   try {
-    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    logger.info(`processCreate :: Skip Forums - ${config.V4_CHALLENGE_API_URL}?filter=skipForum=true body: ${JSON.stringify({ param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) })}`)
+    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}?filter=skipForum=true`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
 
     let forumId = 0
     if (message.payload.legacy && message.payload.legacy.forumId) {
