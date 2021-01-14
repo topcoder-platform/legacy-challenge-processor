@@ -388,6 +388,7 @@ async function closeChallenge (challengeId, winnerId) {
 /**
  * Process create challenge message
  * @param {Object} message the kafka message
+ * @returns {Number} the created legacy id
  */
 async function processCreate (message) {
   if (message.payload.status === constants.challengeStatuses.New) {
@@ -432,6 +433,7 @@ async function processCreate (message) {
     }
     await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
+    return newChallenge.body.result.content.id
   } catch (e) {
     logger.error('processCreate Catch', e)
     throw e
@@ -489,21 +491,22 @@ processCreate.schema = {
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
+  let legacyId = message.payload.legacyId
   if (message.payload.status === constants.challengeStatuses.New) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
     return
-  } else if (!message.payload.legacyId) {
+  } else if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
-    await processCreate(message)
+    legacyId = await processCreate(message)
   }
   const m2mToken = await helper.getM2MToken()
 
   let challenge
   try {
     // ensure challenge existed
-    challenge = await getChallengeById(m2mToken, message.payload.legacyId)
+    challenge = await getChallengeById(m2mToken, legacyId)
     if (!challenge) {
-      throw new Error(`Could not find challenge ${message.payload.legacyId}`)
+      throw new Error(`Could not find challenge ${legacyId}`)
     }
   } catch (e) {
     // postponne kafka event
@@ -527,24 +530,23 @@ async function processUpdate (message) {
     // return
   }
 
-  const v4GroupIds = await groupService.getGroupsForChallenge(message.payload.legacyId)
+  const v4GroupIds = await groupService.getGroupsForChallenge(legacyId)
   logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
-  // const v4TermsIds = await termsService.getTermsForChallenge(message.payload.legacyId)
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     try {
       if (challenge) {
-        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${message.payload.legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
       }
     } catch (e) {
       logger.warn('Failed to update the challenge via the V4 API')
       logger.error(e)
     }
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, message.payload.legacyId)
-    await associateChallengeTerms(message.payload.terms, message.payload.legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-    await setCopilotPayment(message.payload.id, message.payload.legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
+    await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
     // Update metadata in IFX
     if (message.payload.metadata && message.payload.metadata.length > 0) {
@@ -565,7 +567,7 @@ async function processUpdate (message) {
             }
           }
           try {
-            await metadataService.createOrUpdateMetadata(message.payload.legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+            await metadataService.createOrUpdateMetadata(legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
           } catch (e) {
             logger.warn(`Failed to set ${metadataKey} (${constants.supportedMetadata[metadataKey]})`)
           }
@@ -576,7 +578,7 @@ async function processUpdate (message) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
         logger.info('Activating challenge...')
-        await activateChallenge(message.payload.legacyId)
+        await activateChallenge(legacyId)
         logger.info('Activated!')
       }
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
@@ -586,15 +588,15 @@ async function processUpdate (message) {
             throw new Error('Cannot close challenge without winners')
           }
           const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
-          logger.info(`Will close the challenge with ID ${message.payload.legacyId}. Winner ${winnerId}!`)
-          await closeChallenge(message.payload.legacyId, winnerId)
+          logger.info(`Will close the challenge with ID ${legacyId}. Winner ${winnerId}!`)
+          await closeChallenge(legacyId, winnerId)
         } else {
           logger.info('Challenge type is not a task.. Skip closing challenge...')
         }
       }
     }
     try {
-      await helper.forceV4ESFeeder(message.payload.legacyId)
+      await helper.forceV4ESFeeder(legacyId)
     } catch (e) {
       logger.warn('Failed to call V4 ES Feeder')
     }
