@@ -55,6 +55,15 @@ const prizeTypesIds = {
   Checkpoint: 14
 }
 
+const supportedMetadata = {
+  allowStockArt: 52,
+  drPoints: 30,
+  submissionViewable: 53,
+  submissionLimit: 51,
+  codeRepo: 85,
+  environment: 84
+}
+
 module.exports = {
   prizeSetTypes,
   EVENT_ORIGINATOR,
@@ -62,5 +71,6 @@ module.exports = {
   createChallengeStatusesMap,
   challengeStatuses,
   PhaseStatusTypes,
-  prizeTypesIds
+  prizeTypesIds,
+  supportedMetadata
 }
