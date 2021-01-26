@@ -65,12 +65,12 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
     if (amount != null && amount >= 0) {
       // Make sure the payment type is set to manual
       // TODO: Figure out why data is not saved in IFX even when there are no errors
-      // const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
-      // if (!paymentType) {
-      //   await createCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
-      // } else if (_.toLower(_.toString(paymentType.value)) !== 'true') {
-      //   await updateCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
-      // }
+      const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
+      if (!paymentType) {
+        await createCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
+      } else if (_.toLower(_.toString(paymentType.value)) !== 'true') {
+        await updateCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
+      }
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
         return updateCopilotPayment(connection, copilotResourceId, challengeLegacyId, amount, updatedBy)
