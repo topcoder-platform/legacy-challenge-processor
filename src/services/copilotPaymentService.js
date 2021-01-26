@@ -34,7 +34,7 @@ const QUERY_UPDATE_COPILOT_RESOURCE_PAYMENT = `UPDATE resource_info SET value = 
 // const QUERY_DELETE_COPILOT_RESOURCE_PAYMENT = `DELETE FROM resource_info WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_RESOURCE_INFO_ID}`
 
 const QUERY_SELECT_PAYMENT_TYPE = `SELECT value FROM resource_info WHERE resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID} AND resource_id = %d`
-const QUERY_INSERT_PAYMENT_TYPE = `INSERT INTO resource_info (resource_id, resource_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, ${COPILOT_PAYMENT_TYPE_ID}, "true", ?, CURRENT, ?, CURRENT)`
+const QUERY_INSERT_PAYMENT_TYPE = `INSERT INTO resource_info (resource_id, resource_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (40052372, ${COPILOT_PAYMENT_TYPE_ID}, "true", "TCConnCopilot", CURRENT, "TCConnCopilot", CURRENT)`
 const QUERY_UPDATE_PAYMENT_TYPE = `UPDATE resource_info SET value = "true", modify_user = ?, modify_date = CURRENT WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID}`
 /**
  * Prepare Informix statement
@@ -111,7 +111,7 @@ async function getCopilotPaymentType (connection, resourceId) {
 async function createCopilotPaymentType (connection, resourceId, value, createdBy) {
   const query = await prepare(connection, QUERY_INSERT_PAYMENT_TYPE)
   logger.debug(`Create Copilot Payment Type Values: ${[resourceId, value, createdBy, createdBy]}`)
-  const res = await query.executeAsync([resourceId, createdBy, createdBy])
+  const res = await query.executeAsync()
   logger.debug(JSON.stringify(res))
 }
 
