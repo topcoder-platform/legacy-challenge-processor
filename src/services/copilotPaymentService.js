@@ -34,7 +34,7 @@ const QUERY_UPDATE_COPILOT_RESOURCE_PAYMENT = `UPDATE resource_info SET value = 
 // const QUERY_DELETE_COPILOT_RESOURCE_PAYMENT = `DELETE FROM resource_info WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_RESOURCE_INFO_ID}`
 
 const QUERY_SELECT_PAYMENT_TYPE = `SELECT value FROM resource_info WHERE resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID} AND resource_id = %d`
-const QUERY_INSERT_PAYMENT_TYPE = `INSERT INTO resource_info (resource_id, resource_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, ${COPILOT_PAYMENT_TYPE_ID}, ?, ?, CURRENT, ?, CURRENT)`
+const QUERY_INSERT_PAYMENT_TYPE = `BLAH INTO resource_info (resource_id, resource_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, ${COPILOT_PAYMENT_TYPE_ID}, ?, ?, CURRENT, ?, CURRENT)`
 const QUERY_UPDATE_PAYMENT_TYPE = `UPDATE resource_info SET value = ?, modify_user = ?, modify_date = CURRENT WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID}`
 
 /**
@@ -67,9 +67,9 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
       // TODO: Figure out why data is not saved in IFX even when there are no errors
       const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
       if (!paymentType) {
-        await createCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
+        await createCopilotPaymentType(connection, copilotResourceId, 'true', updatedBy || createdBy)
       } else if (_.toLower(_.toString(paymentType.value)) !== 'true') {
-        await updateCopilotPaymentType(connection, copilotResourceId, 'TRUE', updatedBy || createdBy)
+        await updateCopilotPaymentType(connection, copilotResourceId, 'true', updatedBy || createdBy)
       }
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
