@@ -73,14 +73,14 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
       }
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
-        return updateCopilotPayment(connection, copilotResourceId, challengeLegacyId, amount, updatedBy)
+        await updateCopilotPayment(connection, copilotResourceId, challengeLegacyId, amount, updatedBy)
       } else {
         logger.debug(`NO Copilot payment exists, creating: ${challengeLegacyId}`)
         await createCopilotPayment(connection, challengeLegacyId, amount, createdBy)
       }
     } else {
       logger.debug(`No copilot assigned, removing any payments for legacy ID: ${challengeLegacyId}`)
-      return deleteCopilotPayment(connection, challengeLegacyId)
+      await deleteCopilotPayment(connection, challengeLegacyId)
     }
     await connection.commitTransactionAsync()
   } catch (e) {
