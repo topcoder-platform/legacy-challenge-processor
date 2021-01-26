@@ -111,7 +111,8 @@ async function getCopilotPaymentType (connection, resourceId) {
 async function createCopilotPaymentType (connection, resourceId, value, createdBy) {
   const query = await prepare(connection, QUERY_INSERT_PAYMENT_TYPE)
   logger.debug(`Create Copilot Payment Type Values: ${[resourceId, value, createdBy, createdBy]}`)
-  await query.executeAsync([resourceId, createdBy, createdBy])
+  const res = await query.executeAsync([resourceId, createdBy, createdBy])
+  logger.debug(JSON.stringify(res))
 }
 
 /**
