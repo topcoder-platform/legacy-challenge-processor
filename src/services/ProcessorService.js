@@ -15,6 +15,81 @@ const termsService = require('./termsService')
 const copilotPaymentService = require('./copilotPaymentService')
 const timelineService = require('./timelineService')
 const metadataService = require('./metadataService')
+const paymentService = require('./paymentService')
+
+/**
+ * Sync the information from the v5 phases into legacy
+ * @param {Number} legacyId the legacy challenge ID
+ * @param {Array} v4Phases the v4 phases
+ * @param {Array} v5Phases the v5 phases
+ */
+async function syncChallengePhases (legacyId, v5Phases) {
+  const phaseTypes = await timelineService.getPhaseTypes()
+  const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
+  for (const phase of phasesFromIFx) {
+    const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
+    const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
+    if (v5Equivalent) {
+      // Compare duration and status
+      if (v5Equivalent.duration * 1000 !== phase.duration ||
+        (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
+        (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
+        // update phase
+        await timelineService.updatePhase(
+          phase.project_phase_id,
+          legacyId,
+          v5Equivalent.scheduledStartDate,
+          v5Equivalent.scheduledEndDate,
+          v5Equivalent.duration * 1000,
+          v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : constants.PhaseStatusTypes.Closed)
+      }
+    }
+  }
+  // TODO: What about iterative reviews? There can be many for the same challenge.
+  // TODO: handle timeline template updates
+}
+
+/**
+ * Update the payments from v5 prize sets into legacy
+ * @param {Number} legacyId the legacy challenge ID
+ * @param {Array} v5PrizeSets the v5 prize sets
+ * @param {String} createdBy the created by
+ */
+async function updateMemberPayments (legacyId, v5PrizeSets, createdBy) {
+  const prizesFromIfx = await paymentService.getChallengePrizes(legacyId, constants.prizeTypesIds.Contest)
+  const [checkpointPrizesFromIfx] = await paymentService.getChallengePrizes(legacyId, constants.prizeTypesIds.Checkpoint)
+  const v5Prizes = _.map(_.get(_.find(v5PrizeSets, p => p.type === constants.prizeSetTypes.ChallengePrizes), 'prizes', []), prize => prize.value)
+  const v5CheckPointPrizes = _.map(_.get(_.find(v5PrizeSets, p => p.type === constants.prizeSetTypes.CheckPoint), 'prizes', []), prize => prize.value)
+  // compare prizes
+  if (v5Prizes && v5Prizes.length > 0) {
+    v5Prizes.sort((a, b) => b - a)
+    for (let i = 0; i < v5Prizes.length; i += 1) {
+      const ifxPrize = _.find(prizesFromIfx, p => p.place === i + 1)
+      if (ifxPrize) {
+        if (_.toInteger(ifxPrize.prize_amount) !== v5Prizes[i]) {
+          await paymentService.updatePrize(ifxPrize.prize_id, legacyId, v5Prizes[i], 1)
+        }
+      } else {
+        await paymentService.createPrize(legacyId, i + 1, v5Prizes[i], constants.prizeTypesIds.Contest, 1, createdBy)
+      }
+    }
+    if (prizesFromIfx.length > v5Prizes.length) {
+      const prizesToDelete = _.filter(prizesFromIfx, p => p.place > v5Prizes.length)
+      for (const prizeToDelete of prizesToDelete) {
+        await paymentService.deletePrize(legacyId, prizeToDelete.prize_id)
+      }
+    }
+  }
+  // compare checkpoint prizes
+  if (v5CheckPointPrizes && v5CheckPointPrizes.length > 0) {
+    // we assume that all checkpoint prizes will be the same
+    if (v5CheckPointPrizes.length !== checkpointPrizesFromIfx.number_of_submissions || v5CheckPointPrizes[0] !== _.toInteger(checkpointPrizesFromIfx.prize_amount)) {
+      await paymentService.updatePrize(checkpointPrizesFromIfx.prize_id, legacyId, v5CheckPointPrizes[0], v5CheckPointPrizes.length)
+    }
+  } else if (checkpointPrizesFromIfx) {
+    await paymentService.deletePrize(legacyId, checkpointPrizesFromIfx.prize_id)
+  }
+}
 
 /**
  * Get group information by V5 UUID
@@ -544,9 +619,6 @@ async function processUpdate (message) {
       logger.warn('Failed to update the challenge via the V4 API')
       logger.error(e)
     }
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
-    await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
     // Update metadata in IFX
     if (message.payload.metadata && message.payload.metadata.length > 0) {
@@ -595,6 +667,14 @@ async function processUpdate (message) {
         }
       }
     }
+
+    // Direct IFX modifications
+    await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
+    await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
+
     try {
       await helper.forceV4ESFeeder(legacyId)
     } catch (e) {
