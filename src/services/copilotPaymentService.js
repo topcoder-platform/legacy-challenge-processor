@@ -111,7 +111,7 @@ async function getCopilotPaymentType (connection, resourceId) {
 async function createCopilotPaymentType (connection, resourceId, value, createdBy) {
   const query = await prepare(connection, QUERY_INSERT_PAYMENT_TYPE)
   logger.debug(`Create Copilot Payment Type Values: ${[resourceId, value, createdBy, createdBy]}`)
-  await query.executeAsync([resourceId, value, createdBy, createdBy])
+  await query.executeAsync([resourceId, createdBy, createdBy])
 }
 
 /**
@@ -124,7 +124,7 @@ async function createCopilotPaymentType (connection, resourceId, value, createdB
 async function updateCopilotPaymentType (connection, resourceId, value, createdBy) {
   const query = await prepare(connection, QUERY_UPDATE_PAYMENT_TYPE)
   logger.debug(`Update Copilot Payment Type Values: ${[value, createdBy, resourceId]}`)
-  await query.executeAsync([value, createdBy, resourceId])
+  await query.executeAsync([createdBy, resourceId])
 }
 
 /**
