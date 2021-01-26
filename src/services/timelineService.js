@@ -4,6 +4,8 @@
  */
 const logger = require('../common/logger')
 const util = require('util')
+const config = require('config')
+const momentTZ = require('moment-timezone')
 const helper = require('../common/helper')
 
 const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
@@ -12,6 +14,14 @@ const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_t
 const QUERY_GET_TIMELINE_NOTIFICATION_SETTINGS = 'SELECT value FROM project_info WHERE project_id = %d and project_info_type_id = %d'
 const QUERY_CREATE_TIMELINE_NOTIFICATIONS = 'INSERT INTO project_info (project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, "11", "On", ?, CURRENT, ?, CURRENT)'
 const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On", modify_user = ?, modify_date = CURRENT WHERE project_info_type_id = "11" AND project_id = ?'
+
+/**
+ * Formats a date into a format supported by ifx
+ * @param {String} dateStr the date in string format
+ */
+function formatDate (dateStr) {
+  return momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
+}
 
 /**
  * Prepare Informix statement
@@ -75,7 +85,7 @@ async function updatePhase (phaseId, challengeLegacyId, startTime, endTime, dura
   try {
     // await connection.beginTransactionAsync()
     const query = await prepare(connection, util.format(QUERY_UPDATE_CHALLENGE_PHASE, phaseId, challengeLegacyId))
-    result = await query.executeAsync([startTime, endTime, duration, statusTypeId])
+    result = await query.executeAsync([formatDate(startTime), formatDate(endTime), duration, statusTypeId])
     // await connection.commitTransactionAsync()
   } catch (e) {
     logger.error(`Error in 'updatePhase' ${e}, rolling back transaction`)
