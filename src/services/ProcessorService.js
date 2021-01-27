@@ -36,7 +36,7 @@ async function syncChallengePhases (legacyId, v5Phases) {
         (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
         const newStatus = v5Equivalent.isOpen
           ? constants.PhaseStatusTypes.Open
-          : (new Date().getTime() >= new Date(v5Equivalent.scheduledStartDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+          : (new Date().getTime() <= new Date(v5Equivalent.scheduledStartDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
         // update phase
         await timelineService.updatePhase(
           phase.project_phase_id,
