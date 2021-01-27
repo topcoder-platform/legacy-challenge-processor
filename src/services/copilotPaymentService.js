@@ -99,7 +99,7 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
     const copilotResourceId = await getCopilotResourceId(connection, challengeLegacyId)
     const copilotPayment = await getCopilotPayment(connection, challengeLegacyId)
     const copilotProjectPayment = await getCopilotProjectPayment(connection, copilotResourceId)
-    if (amount !== null && amount >= 0) {
+    if (amount !== null && amount >= 0 && copilotResourceId) {
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
         await updateCopilotPayment(connection, copilotResourceId, challengeLegacyId, amount, updatedBy)
