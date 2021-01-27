@@ -202,6 +202,9 @@ async function setCopilotPayment (challengeId, legacyChallengeId, prizeSets = []
         return
       }
       logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
+      if (copilotPayment !== null && copilotPayment >= 0) {
+        await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
+      }
       await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
     }
   } catch (e) {

@@ -50,6 +50,36 @@ async function prepare (connection, sql) {
 }
 
 /**
+ * Set manual copilot payment
+ * @param {Number} challengeLegacyId the legacy challenge ID
+ * @param {String} createdBy the create user handle
+ * @param {String} updatedBy the update user handle
+ */
+async function setManualCopilotPayment (challengeLegacyId, createdBy, updatedBy) {
+  const connection = await helper.getInformixConnection()
+  try {
+    await connection.beginTransactionAsync()
+    const copilotResourceId = await getCopilotResourceId(connection, challengeLegacyId)
+    if (copilotResourceId) {
+      // Make sure the payment type is set to manual
+      const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
+      if (!paymentType) {
+        await createCopilotPaymentType(connection, copilotResourceId, 'true', updatedBy || createdBy)
+      } else if (_.toLower(_.toString(paymentType.value)) !== 'true') {
+        await updateCopilotPaymentType(connection, copilotResourceId, 'true', updatedBy || createdBy)
+      }
+    }
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    logger.error(`Error in 'setManualCopilotPayment' ${e}`)
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+}
+
+/**
  * Set the copilot payment
  * @param {Number} challengeLegacyId the legacy challenge ID
  * @param {Number} amount the $ amount of the copilot payment
@@ -62,15 +92,7 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
     await connection.beginTransactionAsync()
     const copilotResourceId = await getCopilotResourceId(connection, challengeLegacyId)
     const copilotPayment = await getCopilotPayment(connection, challengeLegacyId)
-    if (amount != null && amount >= 0) {
-      // Make sure the payment type is set to manual
-      // TODO: Figure out why data is not saved in IFX even when there are no errors
-      const paymentType = await getCopilotPaymentType(connection, copilotResourceId)
-      if (!paymentType) {
-        await createCopilotPaymentType(connection, copilotResourceId, 'true', updatedBy || createdBy)
-      } else if (_.toLower(_.toString(paymentType.value)) !== 'true') {
-        await updateCopilotPaymentType(connection, copilotResourceId, 'true', updatedBy || createdBy)
-      }
+    if (amount !== null && amount >= 0) {
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
         await updateCopilotPayment(connection, copilotResourceId, challengeLegacyId, amount, updatedBy)
@@ -194,5 +216,6 @@ async function deleteCopilotPayment (connection, challengeLegacyId) {
 }
 
 module.exports = {
+  setManualCopilotPayment,
   setCopilotPayment
 }
