@@ -7,6 +7,7 @@ const COPILOT_PAYMENT_PROJECT_INFO_ID = 49
 const COPILOT_PAYMENT_RESOURCE_INFO_ID = 7
 const COPILOT_PAYMENT_TYPE_ID = 15
 const COPILOT_RESOURCE_ROLE_ID = 14
+const PROJECT_PAYMENT_COPILOT_PAYMENT_TYPE_ID = 4
 
 const QUERY_GET_COPILOT_RESOURCE_FOR_CHALLENGE = `SELECT limit 1 resource_id as resourceid FROM resource WHERE project_id = %d AND resource_role_id = ${COPILOT_RESOURCE_ROLE_ID}`
 // const QUERY_GET_COPILOT_PROJECT_INFO = `select * from resource_info where resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_RESOURCE_INFO_ID}`
@@ -36,6 +37,11 @@ const QUERY_UPDATE_COPILOT_RESOURCE_PAYMENT = `UPDATE resource_info SET value = 
 const QUERY_SELECT_PAYMENT_TYPE = `SELECT value FROM resource_info WHERE resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID} AND resource_id = %d`
 const QUERY_INSERT_PAYMENT_TYPE = `INSERT INTO resource_info (resource_id, resource_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, ${COPILOT_PAYMENT_TYPE_ID}, ?, ?, CURRENT, ?, CURRENT)`
 const QUERY_UPDATE_PAYMENT_TYPE = `UPDATE resource_info SET value = ?, modify_user = ?, modify_date = CURRENT WHERE resource_id = ? AND resource_info_type_id = ${COPILOT_PAYMENT_TYPE_ID}`
+
+const QUERY_SELECT_PROJECT_PAYMENT = `SELECT amount FROM project_payment where resource_id = %d AND project_payment_type_id = ${PROJECT_PAYMENT_COPILOT_PAYMENT_TYPE_ID}`
+const QUERY_INSERT_PROJECT_PAYMENT = `INSERT INTO project_payment (project_payment_type_id, resource_id, amount, create_user, create_date, modify_user, modify_date) VALUES (${PROJECT_PAYMENT_COPILOT_PAYMENT_TYPE_ID}, ?, ?, ?, CURRENT, ?, CURRENT)`
+const QUERY_UPDATE_PROJECT_PAYMENT = `UPDATE project_payment SET amount = ?, modify_user = ?, modify_date = CURRENT WHERE resource_id = ? AND project_payment_type_id = ${PROJECT_PAYMENT_COPILOT_PAYMENT_TYPE_ID}`
+const QUERY_DELETE_PROJECT_PAYMENT = `DELETE FROM project_payment WHERE project_payment_type_id = ${PROJECT_PAYMENT_COPILOT_PAYMENT_TYPE_ID} AND resource_id = ?`
 
 /**
  * Prepare Informix statement
@@ -92,6 +98,7 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
     await connection.beginTransactionAsync()
     const copilotResourceId = await getCopilotResourceId(connection, challengeLegacyId)
     const copilotPayment = await getCopilotPayment(connection, challengeLegacyId)
+    const copilotProjectPayment = await getCopilotProjectPayment(connection, copilotResourceId)
     if (amount !== null && amount >= 0) {
       if (copilotPayment) {
         logger.debug(`Copilot payment exists, updating: ${challengeLegacyId}`)
@@ -100,9 +107,17 @@ async function setCopilotPayment (challengeLegacyId, amount, createdBy, updatedB
         logger.debug(`NO Copilot payment exists, creating: ${challengeLegacyId}`)
         await createCopilotPayment(connection, challengeLegacyId, amount, createdBy)
       }
+      if (copilotProjectPayment) {
+        logger.debug(`Copilot project payment exists, updating: ${challengeLegacyId}`)
+        await updateCopilotProjectPayment(connection, copilotResourceId, amount, updatedBy)
+      } else {
+        logger.debug(`NO Copilot project payment exists, creating: ${challengeLegacyId}`)
+        await createCopilotProjectPayment(connection, copilotResourceId, amount, createdBy)
+      }
     } else {
       logger.debug(`No copilot assigned, removing any payments for legacy ID: ${challengeLegacyId}`)
       await deleteCopilotPayment(connection, challengeLegacyId)
+      await deleteCopilotProjectPayment(connection, copilotResourceId)
     }
     await connection.commitTransactionAsync()
   } catch (e) {
@@ -213,6 +228,53 @@ async function deleteCopilotPayment (connection, challengeLegacyId) {
   const query = await prepare(connection, QUERY_DELETE_COPILOT_PAYMENT)
   logger.debug(`Delete Copilot Payment Values: ${[challengeLegacyId]}`)
   await query.executeAsync([challengeLegacyId])
+}
+
+/**
+ * Gets the copilot payment from the project payment table
+ * @param {Object} connection
+ * @param {Number} copilotResourceId
+ */
+async function getCopilotProjectPayment (connection, copilotResourceId) {
+  const result = await connection.queryAsync(util.format(QUERY_SELECT_PROJECT_PAYMENT, copilotResourceId))
+  return _.get(result, '[0]', null)
+}
+
+/**
+ * Create the copilot payment record in the project payments table
+ * @param {Object} connection the connection
+ * @param {Number} copilotResourceId the copilot resource id
+ * @param {Number} amount the $ amount of the copilot payment
+ * @param {String} createdBy the create user handle
+ */
+async function createCopilotProjectPayment (connection, copilotResourceId, amount, createdBy) {
+  const query = await prepare(connection, QUERY_INSERT_PROJECT_PAYMENT)
+  logger.debug(`Create Copilot Project Payment Values: ${[copilotResourceId, amount, createdBy, createdBy]}`)
+  await query.executeAsync([copilotResourceId, amount, createdBy, createdBy])
+}
+
+/**
+ * Update the existing copilot payment for a legacyId
+ * @param {Object} connection
+ * @param {Number} copilotResourceId
+ * @param {Number} newValue
+ * @param {String} updatedBy the update user handle
+ */
+async function updateCopilotProjectPayment (connection, copilotResourceId, newValue, updatedBy) {
+  const query = await prepare(connection, QUERY_UPDATE_PROJECT_PAYMENT)
+  logger.debug(`Update Copilot Project Payment Query Values: ${[newValue, updatedBy, copilotResourceId]}`)
+  await query.executeAsync([newValue, updatedBy, copilotResourceId])
+}
+
+/**
+ * Delete the existing copilot payment for a legacyId
+ * @param {Object} connection
+ * @param {Number} challengeLegacyId
+ */
+async function deleteCopilotProjectPayment (connection, copilotResourceId) {
+  const query = await prepare(connection, QUERY_DELETE_PROJECT_PAYMENT)
+  logger.debug(`Delete Copilot Project Payment Values: ${[copilotResourceId]}`)
+  await query.executeAsync([copilotResourceId])
 }
 
 module.exports = {

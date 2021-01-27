@@ -34,6 +34,9 @@ async function syncChallengePhases (legacyId, v5Phases) {
       if (v5Equivalent.duration * 1000 !== phase.duration ||
         (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
         (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
+        const newStatus = v5Equivalent.isOpen
+          ? constants.PhaseStatusTypes.Open
+          : (new Date().getTime() >= new Date(v5Equivalent.scheduledStartDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
         // update phase
         await timelineService.updatePhase(
           phase.project_phase_id,
@@ -41,7 +44,7 @@ async function syncChallengePhases (legacyId, v5Phases) {
           v5Equivalent.scheduledStartDate,
           v5Equivalent.scheduledEndDate,
           v5Equivalent.duration * 1000,
-          v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : constants.PhaseStatusTypes.Closed)
+          newStatus)
       }
     }
   }
