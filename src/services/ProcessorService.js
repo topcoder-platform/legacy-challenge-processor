@@ -476,6 +476,12 @@ async function processCreate (message) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
     return
   }
+
+  if (message.payload.task && message.payload.task.isTask) {
+    logger.debug(`Will skip creating on legacy for task`)
+    return
+  }
+
   const m2mToken = await helper.getM2MToken()
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
@@ -572,6 +578,11 @@ processCreate.schema = {
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
+  if (message.payload.task && message.payload.task.isTask) {
+    logger.debug(`Will skip creating on legacy for task`)
+    return
+  }
+
   let legacyId = message.payload.legacyId
   if (message.payload.status === constants.challengeStatuses.New) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
