@@ -675,7 +675,9 @@ async function processUpdate (message) {
     }
 
     // Direct IFX modifications
-    await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    if (_.get(message, 'payload.legacy.useSchedulingAPI')) {
+      await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    }
     await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
