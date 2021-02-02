@@ -38,6 +38,7 @@ async function syncChallengePhases (legacyId, v5Phases) {
           ? constants.PhaseStatusTypes.Open
           : (new Date().getTime() <= new Date(v5Equivalent.scheduledStartDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
         // update phase
+        logger.debug(`Will update phase ${phase.project_phase_id}/${v5Equivalent.name} to duration ${v5Equivalent.duration * 1000} milli`)
         await timelineService.updatePhase(
           phase.project_phase_id,
           legacyId,
@@ -615,11 +616,13 @@ async function processUpdate (message) {
   logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
+  logger.debug('Result from parsePayload:')
+  logger.debug(saveDraftContestDTO)
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     try {
       if (challenge) {
-        // await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
       }
     } catch (e) {
       logger.warn('Failed to update the challenge via the V4 API')
