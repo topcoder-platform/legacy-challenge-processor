@@ -661,10 +661,6 @@ async function processUpdate (message) {
         logger.info('Activating challenge...')
         await activateChallenge(legacyId)
         logger.info('Activated!')
-        // HACK: reset the phases after activation
-        logger.info('Hack! Reset the phases after activation...')
-        await syncChallengePhases(message.payload.legacyId, message.payload.phases)
-        logger.info('Done!')
       }
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         if (message.payload.task.isTask) {
@@ -681,10 +677,7 @@ async function processUpdate (message) {
       }
     }
 
-    // Direct IFX modifications
-    if (_.get(message, 'payload.legacy.useSchedulingAPI')) {
-      await syncChallengePhases(message.payload.legacyId, message.payload.phases)
-    }
+    await syncChallengePhases(message.payload.legacyId, message.payload.phases)
     await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
