@@ -619,7 +619,7 @@ async function processUpdate (message) {
   try {
     try {
       if (challenge) {
-        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+        // await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
       }
     } catch (e) {
       logger.warn('Failed to update the challenge via the V4 API')
