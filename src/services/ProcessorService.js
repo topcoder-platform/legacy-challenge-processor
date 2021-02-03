@@ -477,8 +477,8 @@ async function processCreate (message) {
     return
   }
 
-  if (message.payload.task && message.payload.task.isTask) {
-    logger.debug(`Will skip creating on legacy for task`)
+  if (_.get(message, 'payload.legacy.pureV5Task')) {
+    logger.debug('Challenge is a pure v5 task. Will skip...')
     return
   }
 
@@ -578,8 +578,8 @@ processCreate.schema = {
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
-  if (message.payload.task && message.payload.task.isTask) {
-    logger.debug(`Will skip creating on legacy for task`)
+  if (_.get(message, 'payload.legacy.pureV5Task')) {
+    logger.debug('Challenge is a pure v5 task. Will skip...')
     return
   }
 
