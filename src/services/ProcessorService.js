@@ -698,8 +698,11 @@ async function processUpdate (message) {
         }
       }
     }
-
-    await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    if (!_.get(message.payload, 'task.isTask')) {
+      await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    } else {
+      logger.info('Will skip syncing phases as the challenge is a task...')
+    }
     await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
