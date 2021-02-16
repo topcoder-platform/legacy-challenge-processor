@@ -499,7 +499,7 @@ async function processCreate (message) {
       forumId = message.payload.legacy.forumId
     }
     forumId = _.get(newChallenge, 'body.result.content.forumId', forumId)
-    // await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
+    await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
     await setCopilotPayment(challengeUuid, newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
@@ -695,7 +695,7 @@ async function processUpdate (message) {
     await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
     try {
-      // await helper.forceV4ESFeeder(legacyId)
+      await helper.forceV4ESFeeder(legacyId)
     } catch (e) {
       logger.warn('Failed to call V4 ES Feeder')
     }
