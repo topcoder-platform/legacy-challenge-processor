@@ -36,7 +36,7 @@ async function syncChallengePhases (legacyId, v5Phases) {
         (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
         const newStatus = v5Equivalent.isOpen
           ? constants.PhaseStatusTypes.Open
-          : (new Date().getTime() <= new Date(v5Equivalent.scheduledStartDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+          : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
         // update phase
         logger.debug(`Will update phase ${phase.project_phase_id}/${v5Equivalent.name} to duration ${v5Equivalent.duration * 1000} milli`)
         await timelineService.updatePhase(
@@ -468,6 +468,18 @@ async function closeChallenge (challengeId, winnerId) {
 }
 
 /**
+ * Repost challenge resources on kafka
+ * @param {String} challengeUuid the V5 challenge UUID
+ * @param {String} m2mToken the m2m token
+ */
+async function rePostResourcesOnKafka (challengeUuid, m2mToken) {
+  const challengeResourcesResponse = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeUuid}&perPage=100`, m2mToken)
+  for (const resource of (challengeResourcesResponse.body || [])) {
+    await helper.postBusEvent(config.RESOURCE_CREATE_TOPIC, _.pick(resource, ['id', 'challengeId', 'memberId', 'memberHandle', 'roleId', 'created', 'createdBy', 'updated', 'updatedBy', 'legacyId']))
+  }
+}
+
+/**
  * Process create challenge message
  * @param {Object} message the kafka message
  * @returns {Number} the created legacy id
@@ -515,10 +527,7 @@ async function processCreate (message) {
       legacyId: newChallenge.body.result.content.id
     }, m2mToken)
     // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
-    const challengeResourcesResponse = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeUuid}&perPage=100`, m2mToken)
-    for (const resource of (challengeResourcesResponse.body || [])) {
-      await helper.postBusEvent(config.RESOURCE_CREATE_TOPIC, _.pick(resource, ['id', 'challengeId', 'memberId', 'memberHandle', 'roleId', 'created', 'createdBy', 'updated', 'updatedBy', 'legacyId']))
-    }
+    await rePostResourcesOnKafka(challengeUuid, m2mToken)
     await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
     return newChallenge.body.result.content.id
@@ -672,6 +681,8 @@ async function processUpdate (message) {
         logger.info('Activating challenge...')
         await activateChallenge(legacyId)
         logger.info('Activated!')
+        // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
+        await rePostResourcesOnKafka(message.payload.id, m2mToken)
       }
       if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
         if (message.payload.task.isTask) {
@@ -687,8 +698,11 @@ async function processUpdate (message) {
         }
       }
     }
-
-    await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    if (!_.get(message.payload, 'task.isTask')) {
+      await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+    } else {
+      logger.info('Will skip syncing phases as the challenge is a task...')
+    }
     await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
