@@ -390,8 +390,19 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       const techResult = await getTechnologies(m2mToken)
       data.technologies = _.filter(techResult.result.content, e => payload.tags.includes(e.name))
 
+      if (data.technologies.length < 1) {
+        data.technologies = _.filter(techResult.result.content, e => e.name === 'Other')
+      }
+
       const platResult = await getPlatforms(m2mToken)
       data.platforms = _.filter(platResult.result.content, e => payload.tags.includes(e.name))
+
+      if (data.platforms.length < 1) {
+        data.platforms = _.filter(platResult.result.content, e => e.name === 'Other')
+      }
+
+      logger.debug(`Technologies: ${JSON.stringify(data.technologies)}`)
+      logger.debug(`Platforms: ${JSON.stringify(data.platforms)}`)
     }
     if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
       const oldGroups = _.map(informixGroupIds, g => _.toString(g))
@@ -512,9 +523,9 @@ async function processCreate (message) {
     }
     forumId = _.get(newChallenge, 'body.result.content.forumId', forumId)
     await helper.forceV4ESFeeder(legacyId)
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
-    // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, legacyId)
-    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
+    // jmc - removed because this will happen in update - await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
+    // // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, legacyId)
+    // jmc - removed because this will happen in update - await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -527,8 +538,8 @@ async function processCreate (message) {
       legacyId
     }, m2mToken)
     // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
-    await rePostResourcesOnKafka(challengeUuid, m2mToken)
-    await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
+    // jmc - removed because this will happen in update - await rePostResourcesOnKafka(challengeUuid, m2mToken)
+    // jmc - removed because this will happen in update - await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
     return legacyId
   } catch (e) {
@@ -637,17 +648,18 @@ async function processUpdate (message) {
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   logger.debug('Result from parsePayload:')
-  logger.debug(JSON.stringify(saveDraftContestDTO, null, 2))
+  logger.debug(JSON.stringify(saveDraftContestDTO))
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
-    try {
-      if (challenge) {
-        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-      }
-    } catch (e) {
-      logger.warn('Failed to update the challenge via the V4 API')
-      logger.error(e)
-    }
+    // jmc - remove. Any data that needs to be updated is done manually. stop using the api
+    // try {
+    //   if (challenge) {
+    //     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    //   }
+    // } catch (e) {
+    //   logger.warn('Failed to update the challenge via the V4 API')
+    //   logger.error(e)
+    // }
 
     // Update metadata in IFX
     if (message.payload.metadata && message.payload.metadata.length > 0) {
@@ -708,11 +720,11 @@ async function processUpdate (message) {
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
-    try {
-      await helper.forceV4ESFeeder(legacyId)
-    } catch (e) {
-      logger.warn('Failed to call V4 ES Feeder')
-    }
+    // try {
+    //   await helper.forceV4ESFeeder(legacyId)
+    // } catch (e) {
+    //   logger.warn('Failed to call V4 ES Feeder')
+    // }
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
