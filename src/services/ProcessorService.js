@@ -505,16 +505,16 @@ async function processCreate (message) {
   try {
     logger.info(`processCreate :: Skip Forums - ${config.V4_CHALLENGE_API_URL}?filter=skipForum=true body: ${JSON.stringify({ param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) })}`)
     const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}?filter=skipForum=true`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-
+    const legacyId = newChallenge.body.result.content.id
     let forumId = 0
     if (message.payload.legacy && message.payload.legacy.forumId) {
       forumId = message.payload.legacy.forumId
     }
     forumId = _.get(newChallenge, 'body.result.content.forumId', forumId)
-    await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
-    // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
-    await setCopilotPayment(challengeUuid, newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
+    await helper.forceV4ESFeeder(legacyId)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
+    // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, legacyId)
+    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -524,13 +524,13 @@ async function processCreate (message) {
         directProjectId: newChallenge.body.result.content.projectId,
         forumId
       },
-      legacyId: newChallenge.body.result.content.id
+      legacyId
     }, m2mToken)
     // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
     await rePostResourcesOnKafka(challengeUuid, m2mToken)
-    await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, _.get(message, 'payload.createdBy'))
+    await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
-    return newChallenge.body.result.content.id
+    return legacyId
   } catch (e) {
     logger.error('processCreate Catch', e)
     throw e
@@ -699,11 +699,11 @@ async function processUpdate (message) {
       }
     }
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(message.payload.legacyId, message.payload.phases)
+      await syncChallengePhases(legacyId, message.payload.phases)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
-    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await updateMemberPayments(legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
