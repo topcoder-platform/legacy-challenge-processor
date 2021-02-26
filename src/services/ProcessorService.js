@@ -283,7 +283,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
   try {
     const res = await helper.getRequest(`${config.V5_CHALLENGE_MIGRATION_API_URL}/convert-to-v4?${query.join('&')}`, m2mToken)
     return {
-      track: res.body.track,
+      // track: res.body.track,
       subTrack: res.body.subTrack,
       ...(res.body.isTask ? { task: true } : {})
     }
@@ -538,8 +538,8 @@ async function processCreate (message) {
       legacyId
     }, m2mToken)
     // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
-    // jmc - removed because this will happen in update - await rePostResourcesOnKafka(challengeUuid, m2mToken)
-    // jmc - removed because this will happen in update - await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
+    await rePostResourcesOnKafka(challengeUuid, m2mToken)
+    await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
     logger.debug('End of processCreate')
     return legacyId
   } catch (e) {
