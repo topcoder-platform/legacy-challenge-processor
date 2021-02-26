@@ -133,7 +133,36 @@ async function getV5Terms (v5TermsId, m2mToken) {
  * @param {Array<String>} toBeDeleted the array of groups to be deleted
  * @param {String|Number} legacyChallengeId the legacy challenge ID
  */
-async function associateChallengeGroups (toBeAdded = [], toBeDeleted = [], legacyChallengeId) {
+async function associateChallengeGroups (legacyChallengeId, m2mToken, v5Groups, v4Groups) {
+  let toBeAdded = []
+  let toBeDeleted = []
+
+  if (v5Groups && v5Groups.length > 0) {
+    const oldGroups = _.map(v4Groups, g => _.toString(g))
+    const newGroups = []
+
+    for (const group of v5Groups) {
+      try {
+        const groupInfo = await getGroup(group, m2mToken)
+        if (!_.isEmpty(_.get(groupInfo, 'oldId'))) {
+          newGroups.push(_.toString(_.get(groupInfo, 'oldId')))
+        }
+      } catch (e) {
+        logger.warn(`Failed to load details for group ${group}`)
+      }
+    }
+    toBeAdded = _.difference(newGroups, oldGroups)
+    toBeDeleted = _.difference(oldGroups, newGroups)
+    if (toBeAdded.length > 0) {
+      logger.debug(`parsePayload :: Adding Groups ${JSON.stringify(toBeAdded)}`)
+    }
+    if (toBeDeleted.length > 0) {
+      logger.debug(`parsePayload :: Deleting Groups ${JSON.stringify(toBeDeleted)}`)
+    }
+  } else if (v4Groups && v4Groups.length > 0) {
+    toBeDeleted = _.map(v4Groups, g => _.toString(g))
+  }
+
   for (const group of toBeAdded) {
     await groupService.addGroupToChallenge(legacyChallengeId, group)
   }
@@ -283,7 +312,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
   try {
     const res = await helper.getRequest(`${config.V5_CHALLENGE_MIGRATION_API_URL}/convert-to-v4?${query.join('&')}`, m2mToken)
     return {
-      // track: res.body.track,
+      track: res.body.track,
       subTrack: res.body.subTrack,
       ...(res.body.isTask ? { task: true } : {})
     }
@@ -296,12 +325,12 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
  * Construct DTO from Kafka message payload.
  * @param {Object} payload the Kafka message payload
  * @param {String} m2mToken the m2m token
- * @param {Boolean} isCreated flag indicate the DTO is used in creating challenge
+ * @param {Boolean} createNewChallenge flag indicate the DTO is used in creating challenge
  * @param {Array} informixGroupIds IDs from Informix associated with the group
  * @param {Array<Object>} informixTermsIds IDs from Informix [{termsId, roleId}]
  * @returns the DTO for saving a draft contest.(refer SaveDraftContestDTO in ap-challenge-microservice)
  */
-async function parsePayload (payload, m2mToken, isCreated = true, informixGroupIds) {
+async function parsePayload (payload, m2mToken, createNewChallenge = true) {
   try {
     let projectId
     if (_.get(payload, 'legacy.directProjectId')) {
@@ -329,7 +358,7 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
     if (payload.copilotId) {
       data.copilotId = payload.copilotId
     }
-    if (isCreated) {
+    if (createNewChallenge) {
       // hard code some required properties for v4 api
       data.confidentialityType = _.get(payload, 'legacy.confidentialityType', 'public')
       data.submissionGuidelines = 'Please read above'
@@ -401,33 +430,8 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
         data.platforms = _.filter(platResult.result.content, e => e.name === 'Other')
       }
 
-      logger.debug(`Technologies: ${JSON.stringify(data.technologies)}`)
-      logger.debug(`Platforms: ${JSON.stringify(data.platforms)}`)
-    }
-    if (payload.groups && _.get(payload, 'groups.length', 0) > 0) {
-      const oldGroups = _.map(informixGroupIds, g => _.toString(g))
-      const newGroups = []
-
-      for (const group of payload.groups) {
-        try {
-          const groupInfo = await getGroup(group, m2mToken)
-          if (!_.isEmpty(_.get(groupInfo, 'oldId'))) {
-            newGroups.push(_.toString(_.get(groupInfo, 'oldId')))
-          }
-        } catch (e) {
-          logger.warn(`Failed to load details for group ${group}`)
-        }
-      }
-      data.groupsToBeAdded = _.difference(newGroups, oldGroups)
-      data.groupsToBeDeleted = _.difference(oldGroups, newGroups)
-      if (data.groupsToBeAdded.length > 0) {
-        logger.debug(`parsePayload :: Adding Groups ${JSON.stringify(data.groupsToBeAdded)}`)
-      }
-      if (data.groupsToBeDeleted.length > 0) {
-        logger.debug(`parsePayload :: Deleting Groups ${JSON.stringify(data.groupsToBeAdded)}`)
-      }
-    } else if (informixGroupIds && informixGroupIds.length > 0) {
-      data.groupsToBeDeleted = _.map(informixGroupIds, g => _.toString(g))
+      // logger.debug(`Technologies: ${JSON.stringify(data.technologies)}`)
+      // logger.debug(`Platforms: ${JSON.stringify(data.platforms)}`)
     }
 
     if (payload.metadata && payload.metadata.length > 0) {
@@ -495,103 +499,30 @@ async function rePostResourcesOnKafka (challengeUuid, m2mToken) {
  * @param {Object} message the kafka message
  * @returns {Number} the created legacy id
  */
-async function processCreate (message) {
-  if (message.payload.status === constants.challengeStatuses.New) {
-    logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
-    return
-  }
-
-  if (_.get(message, 'payload.legacy.pureV5Task')) {
-    logger.debug('Challenge is a pure v5 task. Will skip...')
-    return
-  }
-
-  const m2mToken = await helper.getM2MToken()
-
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
-  logger.debug('Parsed Payload', saveDraftContestDTO)
-  const challengeUuid = message.payload.id
-
-  logger.debug('processCreate :: beforeTry')
+async function createLegacyChallengeFromBusMessage (saveDraftContestDTO, existingLegacyObject, m2mToken, challengeUUID) {
   try {
-    logger.info(`processCreate :: Skip Forums - ${config.V4_CHALLENGE_API_URL}?filter=skipForum=true body: ${JSON.stringify({ param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) })}`)
-    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}?filter=skipForum=true`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    const v4Object = { param: saveDraftContestDTO }
+    logger.info(`processCreate :: Skip Forums - ${config.V4_CHALLENGE_API_URL}?filter=skipForum=true body: ${JSON.stringify(v4Object)}`)
+    const newChallenge = await helper.postRequest(`${config.V4_CHALLENGE_API_URL}?filter=skipForum=true`, v4Object, m2mToken)
     const legacyId = newChallenge.body.result.content.id
-    let forumId = 0
-    if (message.payload.legacy && message.payload.legacy.forumId) {
-      forumId = message.payload.legacy.forumId
-    }
-    forumId = _.get(newChallenge, 'body.result.content.forumId', forumId)
     await helper.forceV4ESFeeder(legacyId)
-    // jmc - removed because this will happen in update - await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
-    // // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, legacyId)
-    // jmc - removed because this will happen in update - await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
-    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
+    const v5PatchBody = {
       legacy: {
-        ...message.payload.legacy,
+        ...existingLegacyObject,
         track: saveDraftContestDTO.track,
         subTrack: saveDraftContestDTO.subTrack,
         isTask: saveDraftContestDTO.task || false,
         directProjectId: newChallenge.body.result.content.projectId,
-        forumId
+        forumId: 0
       },
       legacyId
-    }, m2mToken)
-    // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
-    await rePostResourcesOnKafka(challengeUuid, m2mToken)
-    await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
-    logger.debug('End of processCreate')
+    }
+    await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUUID}`, v5PatchBody, m2mToken)
     return legacyId
   } catch (e) {
-    logger.error('processCreate Catch', e)
+    logger.error('createLegacyChallengeFromBusMessage Catch', e)
     throw e
   }
-}
-
-processCreate.schema = {
-  message: Joi.object().keys({
-    topic: Joi.string().required(),
-    originator: Joi.string().required(),
-    timestamp: Joi.date().required(),
-    'mime-type': Joi.string().required(),
-    payload: Joi.object().keys({
-      id: Joi.string().required(),
-      typeId: Joi.string().required(),
-      trackId: Joi.string().required(),
-      legacy: Joi.object().keys({
-        track: Joi.string().required(),
-        reviewType: Joi.string().required(),
-        confidentialityType: Joi.string(),
-        directProjectId: Joi.number(),
-        forumId: Joi.number().integer().positive()
-      }).unknown(true),
-      task: Joi.object().keys({
-        isTask: Joi.boolean().default(false),
-        isAssigned: Joi.boolean().default(false),
-        memberId: Joi.string().allow(null)
-      }),
-      billingAccountId: Joi.number(),
-      name: Joi.string().required(),
-      description: Joi.string(),
-      privateDescription: Joi.string(),
-      phases: Joi.array().items(Joi.object().keys({
-        id: Joi.string().required(),
-        duration: Joi.number().positive().required()
-      }).unknown(true)),
-      prizeSets: Joi.array().items(Joi.object().keys({
-        type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
-        prizes: Joi.array().items(Joi.object().keys({
-          value: Joi.number().positive().required()
-        }).unknown(true)).min(1).required()
-      }).unknown(true)),
-      tags: Joi.array().items(Joi.string().required()), // tag names
-      projectId: Joi.number().integer().positive().required(),
-      copilotId: Joi.number().integer().positive().optional(),
-      status: Joi.string().valid(_.values(Object.keys(constants.createChallengeStatusesMap))).required(),
-      groups: Joi.array().items(Joi.string()),
-      startDate: Joi.date()
-    }).unknown(true).required()
-  }).required()
 }
 
 /**
@@ -604,52 +535,22 @@ async function processUpdate (message) {
     return
   }
 
+  const m2mToken = await helper.getM2MToken()
+  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
+
+  const challengeUuid = message.payload.id
   let legacyId = message.payload.legacyId
   if (message.payload.status === constants.challengeStatuses.New) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
     return
   } else if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
-    legacyId = await processCreate(message)
-  }
-  const m2mToken = await helper.getM2MToken()
-
-  let challenge
-  try {
-    // ensure challenge existed
-    challenge = await getChallengeById(m2mToken, legacyId)
-    if (!challenge) {
-      throw new Error(`Could not find challenge ${legacyId}`)
-    }
-  } catch (e) {
-    // postponne kafka event
-    logger.warn(`Error getting challenge by id, RETRY TURNED OFF ${JSON.stringify(e)}`)
-    // logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
-    // logger.error(`Error: ${JSON.stringify(e)}`)
-
-    // const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
-    // let currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
-    // if (currentRetryCount <= config.MAX_RETRIES) {
-    //   await new Promise((resolve) => {
-    //     setTimeout(async () => {
-    //       currentRetryCount += 1
-    //       await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
-    //       resolve()
-    //     }, config.RETRY_TIMEOUT * currentRetryCount)
-    //   })
-    // } else {
-    //   logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
-    // }
-    // return
+    legacyId = await createLegacyChallengeFromBusMessage(saveDraftContestDTO, message.payload.legacy, m2mToken, challengeUuid)
+    await rePostResourcesOnKafka(challengeUuid, m2mToken)
+    await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
   }
 
-  const v4GroupIds = await groupService.getGroupsForChallenge(legacyId)
-  logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
-
-  const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
-  logger.debug('Result from parsePayload:')
-  logger.debug(JSON.stringify(saveDraftContestDTO))
-  // logger.debug('Parsed Payload', saveDraftContestDTO)
+  const legacyChallenge = await getChallengeById(m2mToken, legacyId)
   try {
     // jmc - remove. Any data that needs to be updated is done manually. stop using the api
     // try {
@@ -687,16 +588,16 @@ async function processUpdate (message) {
         }
       }
     }
-    if (message.payload.status && challenge) {
+    if (message.payload.status && legacyChallenge) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
-      if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
+      if (message.payload.status === constants.challengeStatuses.Active && legacyChallenge.currentStatus !== constants.challengeStatuses.Active) {
         logger.info('Activating challenge...')
         await activateChallenge(legacyId)
         logger.info('Activated!')
         // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
         await rePostResourcesOnKafka(message.payload.id, m2mToken)
       }
-      if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
+      if (message.payload.status === constants.challengeStatuses.Completed && legacyChallenge.currentStatus !== constants.challengeStatuses.Completed) {
         if (message.payload.task.isTask) {
           logger.info('Challenge is a TASK')
           if (!message.payload.winners || message.payload.winners.length === 0) {
@@ -716,15 +617,13 @@ async function processUpdate (message) {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
     await updateMemberPayments(legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
+
+    const v4GroupIds = await groupService.getGroupsForChallenge(legacyId)
+    await associateChallengeGroups(legacyId, m2mToken, message.payload.groups, v4GroupIds)
+
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
-    // try {
-    //   await helper.forceV4ESFeeder(legacyId)
-    // } catch (e) {
-    //   logger.warn('Failed to call V4 ES Feeder')
-    // }
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
@@ -776,7 +675,7 @@ processUpdate.schema = {
 }
 
 module.exports = {
-  processCreate,
+  // processCreate,
   processUpdate
 }
 

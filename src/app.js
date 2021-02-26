@@ -63,11 +63,7 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
   }
 
   try {
-    if (topic === config.CREATE_CHALLENGE_TOPIC) {
-      await ProcessorService.processCreate(messageJSON)
-    } else {
-      await ProcessorService.processUpdate(messageJSON)
-    }
+    await ProcessorService.processUpdate(messageJSON)
 
     logger.debug('Successfully processed message')
   } catch (err) {
