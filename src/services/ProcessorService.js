@@ -651,15 +651,15 @@ async function processUpdate (message) {
   logger.debug(JSON.stringify(saveDraftContestDTO))
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
-    // jmc - remove. Any data that needs to be updated is done manually. stop using the api
-    // try {
-    //   if (challenge) {
-    //     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-    //   }
-    // } catch (e) {
-    //   logger.warn('Failed to update the challenge via the V4 API')
-    //   logger.error(e)
-    // }
+    // Thomas - get rid of this and add required info directly via IFX
+    try {
+      if (challenge) {
+        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+      }
+    } catch (e) {
+      logger.warn('Failed to update the challenge via the V4 API')
+      logger.error(e)
+    }
 
     // Update metadata in IFX
     if (message.payload.metadata && message.payload.metadata.length > 0) {
