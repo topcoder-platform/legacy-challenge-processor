@@ -720,11 +720,11 @@ async function processUpdate (message) {
     await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
     await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
 
-    // try {
-    //   await helper.forceV4ESFeeder(legacyId)
-    // } catch (e) {
-    //   logger.warn('Failed to call V4 ES Feeder')
-    // }
+    try {
+      await helper.forceV4ESFeeder(legacyId)
+    } catch (e) {
+      logger.warn('Failed to call V4 ES Feeder')
+    }
   } catch (e) {
     logger.error('processUpdate Catch', e)
     throw e
