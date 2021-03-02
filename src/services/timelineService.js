@@ -125,6 +125,20 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
   try {
     await connection.beginTransactionAsync()
     const query = await prepare(connection, QUERY_INSERT_CHALLENGE_PHASE)
+    logger.debug(`Query data: ${JSON.stringify([
+      nextId,
+      challengeLegacyId,
+      phaseTypeId,
+      statusTypeId,
+      formatDate(scheduledStartDate),
+      formatDate(scheduledStartDate),
+      formatDate(scheduledEndDate),
+      formatDate(actualStartDate),
+      formatDate(actualEndDate),
+      duration,
+      createdBy,
+      createdBy
+    ])}`)
     result = await query.executeAsync([
       nextId,
       challengeLegacyId,
