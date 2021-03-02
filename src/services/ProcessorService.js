@@ -37,7 +37,7 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
         ? constants.PhaseStatusTypes.Open
         : (new Date().getTime() <= new Date(phase.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
       logger.debug(`Will create phase ${phase.name}/${phaseLegacyId} with duration ${phase.duration} seconds`)
-      await timelineService.createPhase(phaseLegacyId, legacyId, statusTypeId, phase.scheduledStartDate, phase.actualStartDate, phase.scheduledEndDate, phase.actualEndDdate, phase.duration * 1000, createdBy)
+      await timelineService.createPhase(legacyId, phaseLegacyId, statusTypeId, phase.scheduledStartDate, phase.actualStartDate, phase.scheduledEndDate, phase.actualEndDdate, phase.duration * 1000, createdBy)
     } else if (!phaseLegacyId) {
       logger.warn(`Could not create phase ${phase.name} on legacy!`)
     }
