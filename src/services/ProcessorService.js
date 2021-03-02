@@ -635,7 +635,7 @@ async function processUpdate (message) {
   } else if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await processCreate(message)
-    await recreatePhases(legacyId, message.payload.phases, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    // await recreatePhases(legacyId, message.payload.phases, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
   }
   const m2mToken = await helper.getM2MToken()
 
