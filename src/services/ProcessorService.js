@@ -28,6 +28,7 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
   await timelineService.dropPhases(legacyId)
   for (const phase of v5Phases) {
     const phaseLegacyId = _.get(_.find(phaseTypes, pt => pt.name === phase.name), 'phase_type_id')
+    logger.debug(`Phase ${phase.name} has legacy phase type id ${phaseLegacyId}`)
     if (phaseLegacyId) {
       const statusTypeId = phase.isOpen
         ? constants.PhaseStatusTypes.Open
