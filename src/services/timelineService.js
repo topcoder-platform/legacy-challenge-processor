@@ -12,11 +12,16 @@ const helper = require('../common/helper')
 const phaseIdGen = new IDGenerator('prize_id_seq')
 
 const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
+
 const QUERY_GET_CHALLENGE_PHASES = 'SELECT project_phase_id, scheduled_start_time, scheduled_end_time, duration, phase_status_id, phase_type_id FROM project_phase WHERE project_id = %d'
-const QUERY_DROP_CHALLENGE_PHASES = 'DELETE FROM project_phase WHERE project_id = ?'
+const QUERY_DROP_CHALLENGE_PHASE = 'DELETE FROM project_phase WHERE project_id = ? AND project_phase_id = ?'
 const QUERY_INSERT_CHALLENGE_PHASE = 'INSERT INTO project_phase (project_phase_id, project_id, phase_type_id, phase_status_id, fixed_start_time, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, duration, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT, ?, CURRENT)'
 const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
+
+const QUERY_DROP_CHALLENGE_PHASE_CRITERIA = 'DELETE FROM phase_criteria WHERE project_phase_id = ?'
+
 const QUERY_GET_TIMELINE_NOTIFICATION_SETTINGS = 'SELECT value FROM project_info WHERE project_id = %d and project_info_type_id = %d'
+
 const QUERY_CREATE_TIMELINE_NOTIFICATIONS = 'INSERT INTO project_info (project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, "11", "On", ?, CURRENT, ?, CURRENT)'
 const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On", modify_user = ?, modify_date = CURRENT WHERE project_info_type_id = "11" AND project_id = ?'
 
@@ -58,19 +63,22 @@ async function getPhaseTypes () {
 }
 
 /**
- * Drop challenge phases
+ * Drop challenge phase
  * @param {Number} challengeLegacyId the legacy challenge ID
+ * @param {Number} projectPhaseId the phase ID
  */
-async function dropPhases (challengeLegacyId) {
+async function dropPhase (challengeLegacyId, projectPhaseId) {
   const connection = await helper.getInformixConnection()
   let result = null
   try {
     await connection.beginTransactionAsync()
-    const query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASES)
-    result = await query.executeAsync([challengeLegacyId])
+    let query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE_CRITERIA)
+    result = await query.executeAsync([projectPhaseId])
+    query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE)
+    result = await query.executeAsync([challengeLegacyId, projectPhaseId])
     await connection.commitTransactionAsync()
   } catch (e) {
-    logger.error(`Error in 'dropPhases' ${e}, rolling back transaction`)
+    logger.error(`Error in 'dropPhase' ${e}, rolling back transaction`)
     await connection.rollbackTransactionAsync()
     throw e
   } finally {
@@ -226,5 +234,5 @@ module.exports = {
   updatePhase,
   enableTimelineNotifications,
   createPhase,
-  dropPhases
+  dropPhase
 }

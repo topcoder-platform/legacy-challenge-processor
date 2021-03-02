@@ -24,21 +24,33 @@ const paymentService = require('./paymentService')
  * @param {String} createdBy the createdBy
  */
 async function recreatePhases (legacyId, v5Phases, createdBy) {
+  logger.info('recreatePhases :: start')
   const phaseTypes = await timelineService.getPhaseTypes()
-  await timelineService.dropPhases(legacyId)
+  const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
+  logger.debug('Creating phases that exist on v5 and not on legacy...')
   for (const phase of v5Phases) {
     const phaseLegacyId = _.get(_.find(phaseTypes, pt => pt.name === phase.name), 'phase_type_id')
     logger.debug(`Phase ${phase.name} has legacy phase type id ${phaseLegacyId}`)
-    if (phaseLegacyId) {
+    const existingLegacyPhase = _.find(phasesFromIFx, p => p.phase_type_id === phaseLegacyId)
+    if (!existingLegacyPhase && phaseLegacyId) {
       const statusTypeId = phase.isOpen
         ? constants.PhaseStatusTypes.Open
         : (new Date().getTime() <= new Date(phase.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
       logger.debug(`Will create phase ${phase.name}/${phaseLegacyId} with duration ${phase.duration} seconds`)
       await timelineService.createPhase(phaseLegacyId, legacyId, statusTypeId, phase.scheduledStartDate, phase.actualStartDate, phase.scheduledEndDate, phase.actualEndDdate, phase.duration * 1000, createdBy)
-    } else {
+    } else if (!phaseLegacyId) {
       logger.warn(`Could not create phase ${phase.name} on legacy!`)
     }
   }
+  logger.debug('Deleting phases that exist on legacy and not on v5...')
+  for (const phase of phasesFromIFx) {
+    const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
+    const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
+    if (!v5Equivalent) {
+      await timelineService.dropPhase(legacyId, phase.project_phase_id)
+    }
+  }
+  logger.info('recreatePhases :: end')
 }
 
 /**
@@ -635,7 +647,7 @@ async function processUpdate (message) {
   } else if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await processCreate(message)
-    // await recreatePhases(legacyId, message.payload.phases, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await recreatePhases(legacyId, message.payload.phases, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
   }
   const m2mToken = await helper.getM2MToken()
 
