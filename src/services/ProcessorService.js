@@ -18,6 +18,29 @@ const metadataService = require('./metadataService')
 const paymentService = require('./paymentService')
 
 /**
+ * Drop and recreate phases in ifx
+ * @param {Number} legacyId the legacy challenge ID
+ * @param {Array} v5Phases the v5 phases
+ * @param {String} createdBy the createdBy
+ */
+async function recreatePhases (legacyId, v5Phases, createdBy) {
+  const phaseTypes = await timelineService.getPhaseTypes()
+  await timelineService.dropPhases(legacyId)
+  for (const phase of v5Phases) {
+    const phaseLegacyId = _.get(_.find(phaseTypes, pt => pt.name === phase.name), 'phase_type_id')
+    if (phaseLegacyId) {
+      const statusTypeId = phase.isOpen
+        ? constants.PhaseStatusTypes.Open
+        : (new Date().getTime() <= new Date(phase.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      logger.debug(`Will create phase ${phase.name}/${phaseLegacyId} with duration ${phase.duration} seconds`)
+      await timelineService.createPhase(phaseLegacyId, legacyId, statusTypeId, phase.scheduledStartDate, phase.actualStartDate, phase.scheduledEndDate, phase.actualEndDdate, phase.duration * 1000, createdBy)
+    } else {
+      logger.warn(`Could not create phase ${phase.name} on legacy!`)
+    }
+  }
+}
+
+/**
  * Sync the information from the v5 phases into legacy
  * @param {Number} legacyId the legacy challenge ID
  * @param {Array} v4Phases the v4 phases
@@ -611,6 +634,7 @@ async function processUpdate (message) {
   } else if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await processCreate(message)
+    await recreatePhases(legacyId, message.payload.phases, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
   }
   const m2mToken = await helper.getM2MToken()
 

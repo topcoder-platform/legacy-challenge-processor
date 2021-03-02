@@ -6,10 +6,15 @@ const logger = require('../common/logger')
 const util = require('util')
 const config = require('config')
 const momentTZ = require('moment-timezone')
+const IDGenerator = require('../common/idGenerator')
 const helper = require('../common/helper')
+
+const phaseIdGen = new IDGenerator('prize_id_seq')
 
 const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
 const QUERY_GET_CHALLENGE_PHASES = 'SELECT project_phase_id, scheduled_start_time, scheduled_end_time, duration, phase_status_id, phase_type_id FROM project_phase WHERE project_id = %d'
+const QUERY_DROP_CHALLENGE_PHASES = 'DELETE FROM project_phase WHERE project_id = %d'
+const QUERY_INSERT_CHALLENGE_PHASE = 'INSERT INTO project_phase (project_phase_id, project_id, phase_type_id, phase_status_id, fixed_start_time, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, duration, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT, ?, CURRENT)'
 const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
 const QUERY_GET_TIMELINE_NOTIFICATION_SETTINGS = 'SELECT value FROM project_info WHERE project_id = %d and project_info_type_id = %d'
 const QUERY_CREATE_TIMELINE_NOTIFICATIONS = 'INSERT INTO project_info (project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, "11", "On", ?, CURRENT, ?, CURRENT)'
@@ -53,6 +58,29 @@ async function getPhaseTypes () {
 }
 
 /**
+ * Drop challenge phases
+ * @param {Number} challengeLegacyId the legacy challenge ID
+ */
+async function dropPhases (challengeLegacyId) {
+  const connection = await helper.getInformixConnection()
+  let result = null
+  try {
+    await connection.beginTransactionAsync()
+    const query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASES)
+    result = await query.executeAsync([challengeLegacyId])
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    logger.error(`Error in 'dropPhases' ${e}, rolling back transaction`)
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    logger.info('Phases have been deleted')
+    await connection.closeAsync()
+  }
+  return result
+}
+
+/**
  * Gets the challenge phases from ifx
  * @param {Number} challengeLegacyId the legacy challenge ID
  */
@@ -65,6 +93,51 @@ async function getChallengePhases (challengeLegacyId) {
     logger.error(`Error in 'getChallengePhases' ${e}`)
     throw e
   } finally {
+    await connection.closeAsync()
+  }
+  return result
+}
+
+/**
+ * Create a phase in IFX
+ * @param {Number} challengeLegacyId the legacy challenge ID
+ * @param {Number} phaseTypeId the legacy phase type ID
+ * @param {Number} statusTypeId the status type ID
+ * @param {Date} scheduledStartDate the scheduled start date
+ * @param {Date} actualStartDate the actual start date
+ * @param {Date} scheduledEndDate the scheduled end date
+ * @param {Date} actualEndDate the actual end date
+ * @param {Date} duration the duration
+ * @param {String} createdBy the createdBy
+ */
+async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, scheduledStartDate, actualStartDate, scheduledEndDate, actualEndDate, duration, createdBy) {
+  const nextId = await phaseIdGen.getNextId()
+  const connection = await helper.getInformixConnection()
+  let result = null
+  try {
+    await connection.beginTransactionAsync()
+    const query = await prepare(connection, QUERY_INSERT_CHALLENGE_PHASE)
+    result = await query.executeAsync([
+      nextId,
+      challengeLegacyId,
+      phaseTypeId,
+      statusTypeId,
+      formatDate(scheduledStartDate),
+      formatDate(scheduledStartDate),
+      formatDate(scheduledEndDate),
+      formatDate(actualStartDate),
+      formatDate(actualEndDate),
+      duration,
+      createdBy,
+      createdBy
+    ])
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    logger.error(`Error in 'createPhase' ${e}, rolling back transaction`)
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    logger.info(`Phase ${phaseTypeId} has been created`)
     await connection.closeAsync()
   }
   return result
@@ -151,5 +224,7 @@ module.exports = {
   getChallengePhases,
   getPhaseTypes,
   updatePhase,
-  enableTimelineNotifications
+  enableTimelineNotifications,
+  createPhase,
+  dropPhases
 }
