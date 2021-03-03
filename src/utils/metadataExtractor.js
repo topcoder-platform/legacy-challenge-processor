@@ -11,12 +11,6 @@ const _ = require('lodash')
 const getMeta = (metadata = [], key) => _.find(metadata, meta => meta.name === key)
 
 /**
- * Convert string to bool
- * @param {String} v the value
- */
-const toBool = v => _.toString(v).toLowerCase() === 'true'
-
-/**
  * Extract billing project
  * @param {Object} challenge the challenge object
  * @param {Any} defaultValue the default value
@@ -74,7 +68,7 @@ function extractDrPoints (challenge, defaultValue) {
 function extractApprovalRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'approvalRequired')
   if (!entry) return defaultValue
-  return toBool(entry.value)
+  return _.toString(entry.value)
 }
 
 /**
@@ -85,7 +79,7 @@ function extractApprovalRequired (challenge, defaultValue) {
 function extractPostMortemRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'postMortemRequired')
   if (!entry) return defaultValue
-  return toBool(entry.value)
+  return _.toString(entry.value)
 }
 
 /**
@@ -96,7 +90,7 @@ function extractPostMortemRequired (challenge, defaultValue) {
 function extractTrackLateDeliverablesRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'trackLateDeliverables')
   if (!entry) return defaultValue
-  return toBool(entry.value)
+  return _.toString(entry.value)
 }
 
 /**
@@ -107,7 +101,7 @@ function extractTrackLateDeliverablesRequired (challenge, defaultValue) {
 function extractAllowStockArtRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'allowStockArt')
   if (!entry) return defaultValue
-  return toBool(entry.value)
+  return _.toString(entry.value)
 }
 
 /**
@@ -118,7 +112,7 @@ function extractAllowStockArtRequired (challenge, defaultValue) {
 function extractSubmissionViewable (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'submissionViewable')
   if (!entry) return defaultValue
-  return toBool(entry.value)
+  return _.toString(entry.value)
 }
 
 /**
@@ -129,7 +123,7 @@ function extractSubmissionViewable (challenge, defaultValue) {
 function extractReviewFeedback (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'reviewFeedback')
   if (!entry) return defaultValue
-  return toBool(entry.value)
+  return _.toString(entry.value)
 }
 
 /**

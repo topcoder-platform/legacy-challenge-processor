@@ -690,9 +690,10 @@ async function processUpdate (message) {
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     // extract metadata from challenge and insert into IFX
+    let metaValue
     for (const metadataKey of _.keys(constants.supportedMetadata)) {
       try {
-        const metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
+        metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
         if (metaValue !== null) {
           logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
           await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
