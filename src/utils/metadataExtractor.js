@@ -2,7 +2,6 @@
  * Metadata extractor
  */
 const _ = require('lodash')
-const constants = require('../constants')
 
 /**
  * Get metadata entry by key
@@ -53,7 +52,7 @@ function extractSubmissionLimit (challenge, defaultValue) {
  * @param {Any} defaultValue the default value
  */
 function extractSpecReviewCost (challenge, defaultValue) {
-  return _.get(_.find(_.get(challenge, 'prizeSets', []), p => p.type === constants.prizeSetTypes.SpecReview) || {}, 'prizes[0].value', defaultValue)
+  return _.get(_.find(_.get(challenge, 'prizeSets', []), p => p.type === 'specReviewer') || {}, 'prizes[0].value', defaultValue)
 }
 
 /**

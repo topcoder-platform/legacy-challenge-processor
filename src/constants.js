@@ -7,8 +7,7 @@ const prizeSetTypes = {
   ChallengePrizes: 'placement',
   CopilotPayment: 'copilot',
   ReviewerPayment: 'reviewer',
-  CheckPoint: 'checkpoint',
-  SpecReview: 'specReviewer'
+  CheckPoint: 'checkpoint'
 }
 
 const EVENT_ORIGINATOR = 'legacy-challenge-processor'
