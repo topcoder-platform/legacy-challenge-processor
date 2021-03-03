@@ -47,6 +47,7 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
     if (!v5Equivalent) {
+      logger.debug(`Will delete phase ${phaseName}`)
       await timelineService.dropPhase(legacyId, phase.project_phase_id)
     }
   }
@@ -689,14 +690,14 @@ async function processUpdate (message) {
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     // Thomas - get rid of this and add required info directly via IFX
-    // try {
-    //   if (challenge) {
-    //     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-    //   }
-    // } catch (e) {
-    //   logger.warn('Failed to update the challenge via the V4 API')
-    //   logger.error(e)
-    // }
+    try {
+      if (challenge) {
+        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+      }
+    } catch (e) {
+      logger.warn('Failed to update the challenge via the V4 API')
+      logger.error(e)
+    }
 
     // Update metadata in IFX
     if (message.payload.metadata && message.payload.metadata.length > 0) {
