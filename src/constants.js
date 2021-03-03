@@ -1,12 +1,14 @@
 /**
  * constants
  */
+const metadataExtractor = require('./utils/metadataExtractor')
 
 const prizeSetTypes = {
   ChallengePrizes: 'placement',
   CopilotPayment: 'copilot',
   ReviewerPayment: 'reviewer',
-  CheckPoint: 'checkpoint'
+  CheckPoint: 'checkpoint',
+  SpecReview: 'specReviewer'
 }
 
 const EVENT_ORIGINATOR = 'legacy-challenge-processor'
@@ -57,12 +59,81 @@ const prizeTypesIds = {
 }
 
 const supportedMetadata = {
-  allowStockArt: 52,
-  drPoints: 30,
-  submissionViewable: 53,
-  submissionLimit: 51,
-  codeRepo: 85,
-  environment: 84
+  32: {
+    method: metadataExtractor.extractBillingProject,
+    defaultValue: null,
+    description: 'Billing Project'
+  },
+  30: {
+    method: metadataExtractor.extractDrPoints,
+    defaultValue: 0,
+    description: 'DR points'
+  },
+  35: {
+    method: metadataExtractor.extractSpecReviewCost,
+    defaultValue: null,
+    description: 'Spec review cost'
+  },
+  41: {
+    method: metadataExtractor.extractApprovalRequired,
+    defaultValue: true,
+    description: 'Approval Required'
+  },
+  44: {
+    method: metadataExtractor.extractPostMortemRequired,
+    defaultValue: true,
+    description: 'Post-Mortem Required'
+  },
+  48: {
+    method: metadataExtractor.extractTrackLateDeliverablesRequired,
+    defaultValue: true,
+    description: 'Track Late Deliverables'
+  },
+  51: {
+    method: metadataExtractor.extractSubmissionLimit,
+    defaultValue: null,
+    description: 'Maximum submissions'
+  },
+  52: {
+    method: metadataExtractor.extractAllowStockArtRequired,
+    defaultValue: false,
+    description: 'Allow Stock Art'
+  },
+  53: {
+    method: metadataExtractor.extractSubmissionViewable,
+    defaultValue: false,
+    description: 'Viewable Submissions Flag'
+  },
+  59: {
+    method: metadataExtractor.extractReviewFeedback,
+    defaultValue: true,
+    description: 'Review Feedback Flag'
+  },
+  84: {
+    method: metadataExtractor.extractEnvironment,
+    defaultValue: null,
+    description: 'Environment'
+  },
+  85: {
+    method: metadataExtractor.extractCodeRepo,
+    defaultValue: null,
+    description: 'Code repo'
+  },
+  88: {
+    method: metadataExtractor.extractEstimateEffortHours,
+    defaultValue: 0,
+    description: 'Effort Hours Estimate'
+  },
+  89: {
+    method: metadataExtractor.extractEstimateEffortOffshore,
+    defaultValue: 0,
+    description: 'Estimate Effort Days offshore'
+  },
+  90: {
+    method: metadataExtractor.extractEstimateEffortOnsite,
+    defaultValue: 0,
+    description: 'Estimate Effort Days Onsite'
+  }
 }
 
 module.exports = {

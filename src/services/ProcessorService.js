@@ -689,42 +689,25 @@ async function processUpdate (message) {
   logger.debug(JSON.stringify(saveDraftContestDTO))
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
+    // extract metadata from challenge and insert into IFX
+    for (const metadataKey of _.keys(constants.supportedMetadata)) {
+      const metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
+      try {
+        await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+      } catch (e) {
+        logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+      }
+    }
     // Thomas - get rid of this and add required info directly via IFX
-    try {
-      if (challenge) {
-        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-      }
-    } catch (e) {
-      logger.warn('Failed to update the challenge via the V4 API')
-      logger.error(e)
-    }
+    // try {
+    //   if (challenge) {
+    //     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    //   }
+    // } catch (e) {
+    //   logger.warn('Failed to update the challenge via the V4 API')
+    //   logger.error(e)
+    // }
 
-    // Update metadata in IFX
-    if (message.payload.metadata && message.payload.metadata.length > 0) {
-      for (const metadataKey of _.keys(constants.supportedMetadata)) {
-        const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
-        if (entry) {
-          if (metadataKey === 'submissionLimit') {
-            // data here is JSON stringified
-            try {
-              const parsedEntryValue = JSON.parse(entry.value)
-              if (parsedEntryValue.limit) {
-                entry.value = parsedEntryValue.count
-              } else {
-                entry.value = null
-              }
-            } catch (e) {
-              entry.value = null
-            }
-          }
-          try {
-            await metadataService.createOrUpdateMetadata(legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-          } catch (e) {
-            logger.warn(`Failed to set ${metadataKey} (${constants.supportedMetadata[metadataKey]})`)
-          }
-        }
-      }
-    }
     if (message.payload.status && challenge) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
