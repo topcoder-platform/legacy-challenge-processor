@@ -692,10 +692,13 @@ async function processUpdate (message) {
     // extract metadata from challenge and insert into IFX
     for (const metadataKey of _.keys(constants.supportedMetadata)) {
       const metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
-      try {
-        await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-      } catch (e) {
-        logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+      if (metaValue !== null) {
+        try {
+          logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+          await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+        } catch (e) {
+          logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+        }
       }
     }
     // Thomas - get rid of this and add required info directly via IFX
