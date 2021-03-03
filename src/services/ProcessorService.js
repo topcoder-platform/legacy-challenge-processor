@@ -694,7 +694,7 @@ async function processUpdate (message) {
     for (const metadataKey of _.keys(constants.supportedMetadata)) {
       try {
         metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
-        if (metaValue !== null) {
+        if (metaValue !== null && metaValue !== '') {
           logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
           await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
         }
