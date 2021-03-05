@@ -2,7 +2,6 @@
  * Metadata extractor
  */
 const _ = require('lodash')
-const constants = require('../constants')
 
 /**
  * Get metadata entry by key
@@ -10,12 +9,6 @@ const constants = require('../constants')
  * @param {String} key the metadata key
  */
 const getMeta = (metadata = [], key) => _.find(metadata, meta => meta.name === key)
-
-/**
- * Convert string to bool
- * @param {String} v the value
- */
-const toBool = v => _.toString(v).toLowerCase() === 'true'
 
 /**
  * Extract billing project
@@ -33,7 +26,7 @@ function extractBillingProject (challenge, defaultValue) {
  */
 function extractSubmissionLimit (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'submissionLimit')
-  if (!entry) return defaultValue
+  if (!entry) return _.toString(defaultValue)
   try {
     const parsedEntryValue = JSON.parse(entry.value)
     if (parsedEntryValue.limit) {
@@ -44,7 +37,7 @@ function extractSubmissionLimit (challenge, defaultValue) {
   } catch (e) {
     entry.value = null
   }
-  return entry.value || defaultValue
+  return _.toString(entry.value || defaultValue)
 }
 
 /**
@@ -53,7 +46,7 @@ function extractSubmissionLimit (challenge, defaultValue) {
  * @param {Any} defaultValue the default value
  */
 function extractSpecReviewCost (challenge, defaultValue) {
-  return _.get(_.find(_.get(challenge, 'prizeSets', []), p => p.type === constants.prizeSetTypes.SpecReview) || {}, 'prizes[0].value', defaultValue)
+  return _.get(_.find(_.get(challenge, 'prizeSets', []), p => p.type === 'specReviewer') || {}, 'prizes[0].value', _.toString(defaultValue))
 }
 
 /**
@@ -63,8 +56,8 @@ function extractSpecReviewCost (challenge, defaultValue) {
  */
 function extractDrPoints (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'drPoints')
-  if (!entry) return defaultValue
-  return entry.value || defaultValue
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value || defaultValue)
 }
 
 /**
@@ -74,8 +67,8 @@ function extractDrPoints (challenge, defaultValue) {
  */
 function extractApprovalRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'approvalRequired')
-  if (!entry) return defaultValue
-  return toBool(entry.value)
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -85,8 +78,8 @@ function extractApprovalRequired (challenge, defaultValue) {
  */
 function extractPostMortemRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'postMortemRequired')
-  if (!entry) return defaultValue
-  return toBool(entry.value)
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -96,8 +89,8 @@ function extractPostMortemRequired (challenge, defaultValue) {
  */
 function extractTrackLateDeliverablesRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'trackLateDeliverables')
-  if (!entry) return defaultValue
-  return toBool(entry.value)
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -107,8 +100,8 @@ function extractTrackLateDeliverablesRequired (challenge, defaultValue) {
  */
 function extractAllowStockArtRequired (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'allowStockArt')
-  if (!entry) return defaultValue
-  return toBool(entry.value)
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -118,8 +111,8 @@ function extractAllowStockArtRequired (challenge, defaultValue) {
  */
 function extractSubmissionViewable (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'submissionViewable')
-  if (!entry) return defaultValue
-  return toBool(entry.value)
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -129,8 +122,8 @@ function extractSubmissionViewable (challenge, defaultValue) {
  */
 function extractReviewFeedback (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'reviewFeedback')
-  if (!entry) return defaultValue
-  return toBool(entry.value)
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -140,8 +133,8 @@ function extractReviewFeedback (challenge, defaultValue) {
  */
 function extractEnvironment (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'environment')
-  if (!entry) return defaultValue
-  return entry.value
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -151,8 +144,8 @@ function extractEnvironment (challenge, defaultValue) {
  */
 function extractCodeRepo (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'codeRepo')
-  if (!entry) return defaultValue
-  return entry.value
+  if (!entry) return _.toString(defaultValue)
+  return _.toString(entry.value)
 }
 
 /**
@@ -162,7 +155,7 @@ function extractCodeRepo (challenge, defaultValue) {
  */
 function extractEstimateEffortHours (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'effortHoursEstimate')
-  if (!entry) return defaultValue
+  if (!entry) return _.toString(defaultValue)
   return _.toNumber(entry.value)
 }
 
@@ -173,7 +166,7 @@ function extractEstimateEffortHours (challenge, defaultValue) {
  */
 function extractEstimateEffortOffshore (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'effortHoursOffshore')
-  if (!entry) return defaultValue
+  if (!entry) return _.toString(defaultValue)
   return _.toNumber(entry.value)
 }
 
@@ -184,7 +177,7 @@ function extractEstimateEffortOffshore (challenge, defaultValue) {
  */
 function extractEstimateEffortOnsite (challenge, defaultValue) {
   const entry = getMeta(challenge.metadata, 'effortHoursOnshore')
-  if (!entry) return defaultValue
+  if (!entry) return _.toString(defaultValue)
   return _.toNumber(entry.value)
 }
 

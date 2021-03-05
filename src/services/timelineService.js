@@ -30,6 +30,7 @@ const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On
  * @param {String} dateStr the date in string format
  */
 function formatDate (dateStr) {
+  logger.info(`Formatting date ${dateStr}`)
   return momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
 }
 
@@ -125,6 +126,20 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
   try {
     await connection.beginTransactionAsync()
     const query = await prepare(connection, QUERY_INSERT_CHALLENGE_PHASE)
+    logger.debug(`Query data: ${JSON.stringify([
+      nextId,
+      challengeLegacyId,
+      phaseTypeId,
+      statusTypeId,
+      formatDate(scheduledStartDate),
+      formatDate(scheduledStartDate),
+      formatDate(scheduledEndDate),
+      formatDate(actualStartDate),
+      formatDate(actualEndDate),
+      duration,
+      createdBy,
+      createdBy
+    ])}`)
     result = await query.executeAsync([
       nextId,
       challengeLegacyId,

@@ -37,7 +37,17 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
         ? constants.PhaseStatusTypes.Open
         : (new Date().getTime() <= new Date(phase.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
       logger.debug(`Will create phase ${phase.name}/${phaseLegacyId} with duration ${phase.duration} seconds`)
-      await timelineService.createPhase(legacyId, phaseLegacyId, statusTypeId, phase.scheduledStartDate, phase.actualStartDate, phase.scheduledEndDate, phase.actualEndDdate, phase.duration * 1000, createdBy)
+      await timelineService.createPhase(
+        legacyId,
+        phaseLegacyId,
+        statusTypeId,
+        phase.scheduledStartDate,
+        phase.actualStartDate,
+        phase.scheduledEndDate,
+        phase.actualEndDate,
+        phase.duration * 1000,
+        createdBy
+      )
     } else if (!phaseLegacyId) {
       logger.warn(`Could not create phase ${phase.name} on legacy!`)
     }
@@ -693,15 +703,16 @@ async function processUpdate (message) {
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
     // extract metadata from challenge and insert into IFX
+    let metaValue
     for (const metadataKey of _.keys(constants.supportedMetadata)) {
-      const metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
-      if (metaValue !== null) {
-        try {
+      try {
+        metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
+        if (metaValue !== null && metaValue !== '') {
           logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
           await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-        } catch (e) {
-          logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
         }
+      } catch (e) {
+        logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
       }
     }
     // Thomas - get rid of this and add required info directly via IFX
