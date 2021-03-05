@@ -23,7 +23,7 @@ const toBool = v => _.toString(v).toLowerCase() === 'true'
  * @param {Any} defaultValue the default value
  */
 function extractBillingProject (challenge, defaultValue) {
-  return _.get(challenge, 'billingAccountId', _.get(challenge, 'billing.billingAccountId', defaultValue))
+  return _.get(challenge, 'billing.billingAccountId', _.get(challenge, 'billingAccountId', defaultValue))
 }
 
 /**
