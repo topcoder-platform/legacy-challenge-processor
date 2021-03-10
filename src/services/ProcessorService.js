@@ -559,6 +559,8 @@ async function processCreate (message) {
   logger.debug('Parsed Payload', saveDraftContestDTO)
   const challengeUuid = message.payload.id
 
+  const createdByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.createdBy'))
+
   logger.debug('processCreate :: beforeTry')
   try {
     logger.info(`processCreate :: Skip Forums - ${config.V4_CHALLENGE_API_URL}?filter=skipForum=true body: ${JSON.stringify({ param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) })}`)
@@ -586,7 +588,7 @@ async function processCreate (message) {
     }, m2mToken)
     // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
     await rePostResourcesOnKafka(challengeUuid, m2mToken)
-    await timelineService.enableTimelineNotifications(legacyId, _.get(message, 'payload.createdBy'))
+    await timelineService.enableTimelineNotifications(legacyId, createdByUserId)
     logger.debug('End of processCreate')
     return legacyId
   } catch (e) {
@@ -651,6 +653,9 @@ async function processUpdate (message) {
     return
   }
 
+  const createdByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.createdBy'))
+  const updatedByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+
   let legacyId = message.payload.legacyId
   if (message.payload.status === constants.challengeStatuses.New) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
@@ -658,7 +663,7 @@ async function processUpdate (message) {
   } else if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await processCreate(message)
-    await recreatePhases(legacyId, message.payload.phases, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
   }
   const m2mToken = await helper.getM2MToken()
 
@@ -706,7 +711,7 @@ async function processUpdate (message) {
         metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
         if (metaValue !== null && metaValue !== '') {
           logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
-          await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+          await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, updatedByUserId)
         }
       } catch (e) {
         logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
@@ -750,10 +755,10 @@ async function processUpdate (message) {
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
-    await updateMemberPayments(legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
-    await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
+    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
     try {
       await helper.forceV4ESFeeder(legacyId)

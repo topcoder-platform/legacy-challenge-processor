@@ -162,6 +162,34 @@ async function forceV4ESFeeder (legacyId) {
   await request.put(`${config.V4_ES_FEEDER_API_URL}`).send(body).set({ Authorization: `Bearer ${token}` })
 }
 
+/**
+ * Get the member ID by handle
+ * @param {String} handle the handle
+ */
+async function getMemberIdByHandle (handle) {
+  const m2mToken = await getM2MToken()
+  let memberId
+  try {
+    const res = await getRequest(`${config.MEMBER_API_URL}/${handle}`, m2mToken)
+    if (_.get(res, 'body.userId')) {
+      memberId = res.body.userId
+    }
+    // handle return from v3 API, handle and memberHandle are the same under case-insensitive condition
+    handle = _.get(res, 'body.handle')
+  } catch (error) {
+    // re-throw all error except 404 Not-Founded, BadRequestError should be thrown if 404 occurs
+    if (error.status !== 404) {
+      throw error
+    }
+  }
+
+  if (_.isUndefined(memberId)) {
+    throw new Error(`User with handle: ${handle} doesn't exist`)
+  }
+
+  return memberId
+}
+
 module.exports = {
   getInformixConnection,
   getKafkaOptions,
@@ -171,5 +199,6 @@ module.exports = {
   putRequest,
   postRequest,
   postBusEvent,
-  forceV4ESFeeder
+  forceV4ESFeeder,
+  getMemberIdByHandle
 }
