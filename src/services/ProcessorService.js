@@ -367,8 +367,8 @@ async function parsePayload (payload, m2mToken, isCreated = true, informixGroupI
       projectId,
       status: payload.status
     }
-    if (payload.billingAccountId) {
-      data.billingAccountId = payload.billingAccountId
+    if (_.get(payload, 'billing.billingAccountId')) {
+      data.billingAccountId = _.get(payload, 'billing.billingAccountId')
     }
     if (_.get(payload, 'legacy.forumId')) {
       data.forumId = payload.legacy.forumId
@@ -619,7 +619,10 @@ processCreate.schema = {
         isAssigned: Joi.boolean().default(false),
         memberId: Joi.string().allow(null)
       }),
-      billingAccountId: Joi.number(),
+      billing: Joi.object().keys({
+        billingAccountId: Joi.number(),
+        markup: Joi.number().min(0).max(100)
+      }).unknown(true),
       name: Joi.string().required(),
       description: Joi.string(),
       privateDescription: Joi.string(),
@@ -791,7 +794,10 @@ processUpdate.schema = {
         isAssigned: Joi.boolean().default(false),
         memberId: Joi.string().allow(null)
       }),
-      billingAccountId: Joi.number(),
+      billing: Joi.object().keys({
+        billingAccountId: Joi.number(),
+        markup: Joi.number().min(0).max(100)
+      }).unknown(true),
       typeId: Joi.string().required(),
       trackId: Joi.string().required(),
       name: Joi.string(),

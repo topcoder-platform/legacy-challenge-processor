@@ -16,7 +16,7 @@ const getMeta = (metadata = [], key) => _.find(metadata, meta => meta.name === k
  * @param {Any} defaultValue the default value
  */
 function extractBillingProject (challenge, defaultValue) {
-  return _.get(challenge, 'billingAccountId', _.get(challenge, 'billing.billingAccountId', _.toString(defaultValue)))
+  return _.get(challenge, 'billing.billingAccountId', _.get(challenge, 'billingAccountId', defaultValue))
 }
 
 /**
