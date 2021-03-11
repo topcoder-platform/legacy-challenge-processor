@@ -695,7 +695,7 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, challenge.phases)
+      await syncChallengePhases(legacyId, message.payload.phases)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
