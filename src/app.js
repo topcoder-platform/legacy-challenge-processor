@@ -24,8 +24,8 @@ const consumer = new Kafka.GroupConsumer(helper.getKafkaOptions())
  */
 const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, async (m) => {
   const message = m.message.value.toString('utf8')
-  logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${
-    m.offset}; Message: ${message}.`)
+  // logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${
+  //   m.offset}; Message: ${message}.`)
   let messageJSON
   try {
     messageJSON = JSON.parse(message)
@@ -39,7 +39,7 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
   }
 
   if (messageJSON.topic !== topic) {
-    logger.error(`The message topic ${messageJSON.topic} doesn't match the Kafka topic ${topic}.`)
+    logger.error(`The message topic ${messageJSON.topic} doesn't match the Kafka topic ${topic}. Message: ${JSON.stringify(messageJSON)}`)
 
     // commit the message and ignore it
     await consumer.commitOffset({ topic, partition, offset: m.offset })
@@ -64,13 +64,14 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
 
   try {
     if (topic === config.CREATE_CHALLENGE_TOPIC) {
-      await ProcessorService.processCreate(messageJSON)
+      await ProcessorService.processMessage(messageJSON)
     } else {
-      await ProcessorService.processUpdate(messageJSON)
+      await ProcessorService.processMessage(messageJSON)
     }
 
-    logger.debug('Successfully processed message')
+    // logger.debug('Successfully processed message')
   } catch (err) {
+    logger.error(`Error processing message ${JSON.stringify(messageJSON)}`)
     logger.logFullError(err)
   } finally {
     // Commit offset regardless of error
