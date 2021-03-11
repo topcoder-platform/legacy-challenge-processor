@@ -70,7 +70,7 @@ workflows:
             branches:
               only:
                 - develop
-                - feature/negative_length_error_fix
+                - features/phase-dependency
 
       # Production builds are exectuted only on tagged commits to the
       # master branch.
