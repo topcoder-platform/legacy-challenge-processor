@@ -726,6 +726,15 @@ async function processUpdate (message) {
     //   logger.warn('Failed to update the challenge via the V4 API')
     //   logger.error(e)
     // }
+    if (!_.get(message.payload, 'task.isTask')) {
+      await syncChallengePhases(legacyId, message.payload.phases)
+    } else {
+      logger.info('Will skip syncing phases as the challenge is a task...')
+    }
+    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
+    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
+    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
     if (message.payload.status && challenge) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
@@ -750,15 +759,6 @@ async function processUpdate (message) {
         }
       }
     }
-    if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases)
-    } else {
-      logger.info('Will skip syncing phases as the challenge is a task...')
-    }
-    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
-    await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
-    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
     try {
       await helper.forceV4ESFeeder(legacyId)
