@@ -58,21 +58,21 @@ async function createOrUpdateMetadata (challengeLegacyId, typeId, value, created
     const [existing] = await getMetadataEntry(challengeLegacyId, typeId)
     if (existing) {
       if (value) {
-        logger.info(`Metadata ${typeId} exists. Will update`)
+        // logger.info(`Metadata ${typeId} exists. Will update`)
         const query = await prepare(connection, QUERY_UPDATE)
         result = await query.executeAsync([value, createdBy, typeId, challengeLegacyId])
       } else {
-        logger.info(`Metadata ${typeId} exists. Will delete`)
+        // logger.info(`Metadata ${typeId} exists. Will delete`)
         const query = await prepare(connection, QUERY_DELETE)
         result = await query.executeAsync([challengeLegacyId, typeId])
       }
     } else {
-      logger.info(`Metadata ${typeId} does not exist. Will create`)
+      // logger.info(`Metadata ${typeId} does not exist. Will create`)
       const query = await prepare(connection, QUERY_CREATE)
       result = await query.executeAsync([challengeLegacyId, typeId, value, createdBy, createdBy])
     }
     // await connection.commitTransactionAsync()
-    logger.info(`Metadata with typeId ${typeId} has been enabled for challenge ${challengeLegacyId}`)
+    // logger.info(`Metadata with typeId ${typeId} has been enabled for challenge ${challengeLegacyId}`)
   } catch (e) {
     logger.error(`Error in 'createOrUpdateMetadata' ${e}, rolling back transaction`)
     await connection.rollbackTransactionAsync()

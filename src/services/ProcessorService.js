@@ -16,7 +16,6 @@ const copilotPaymentService = require('./copilotPaymentService')
 const timelineService = require('./timelineService')
 const metadataService = require('./metadataService')
 const paymentService = require('./paymentService')
-const { parse } = require('superagent')
 
 /**
  * Drop and recreate phases in ifx
@@ -74,10 +73,12 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
 async function syncChallengePhases (legacyId, v5Phases) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
+  logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
   for (const phase of phasesFromIFx) {
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
+    logger.info(`Phase name: ${phaseName}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
       // Compare duration and status
       if (v5Equivalent.duration * 1000 !== phase.duration) {
@@ -98,7 +99,11 @@ async function syncChallengePhases (legacyId, v5Phases) {
           phase.phase_status_id
         )
         // newStatus)
+      } else {
+        logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
       }
+    } else {
+      logger.info(`No v5 Equivalent Found for ${phaseName}`)
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -653,7 +658,7 @@ async function processMessage (message) {
     try {
       metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
       if (metaValue !== null && metaValue !== '') {
-        logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+        // logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
         await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, updatedByUserId)
       }
     } catch (e) {
