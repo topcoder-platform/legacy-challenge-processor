@@ -30,8 +30,8 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
   logger.debug('Creating phases that exist on v5 and not on legacy...')
   for (const phase of v5Phases) {
     const phaseLegacyId = _.get(_.find(phaseTypes, pt => pt.name === phase.name), 'phase_type_id')
-    logger.debug(`Phase ${phase.name} has legacy phase type id ${phaseLegacyId}`)
     const existingLegacyPhase = _.find(phasesFromIFx, p => p.phase_type_id === phaseLegacyId)
+    logger.debug(`Phase ${phase.name} has legacy phase type id ${phaseLegacyId} - Existing Phase ${JSON.stringify(existingLegacyPhase)}`)
     if (!existingLegacyPhase && phaseLegacyId) {
       const statusTypeId = phase.isOpen
         ? constants.PhaseStatusTypes.Open
@@ -67,7 +67,6 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
 /**
  * Sync the information from the v5 phases into legacy
  * @param {Number} legacyId the legacy challenge ID
- * @param {Array} v4Phases the v4 phases
  * @param {Array} v5Phases the v5 phases
  */
 async function syncChallengePhases (legacyId, v5Phases) {
@@ -78,10 +77,10 @@ async function syncChallengePhases (legacyId, v5Phases) {
   for (const phase of phasesFromIFx) {
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
-    logger.info(`Phase name: ${phaseName}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
+    logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
       // Compare duration and status
-      if (v5Equivalent.duration * 1000 !== phase.duration) {
+      if (v5Equivalent.duration * 1000 !== phase.duration * 1) {
         // ||
         // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
         // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
