@@ -73,17 +73,19 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
 async function syncChallengePhases (legacyId, v5Phases) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
+  logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
   for (const phase of phasesFromIFx) {
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
     if (v5Equivalent) {
       // Compare duration and status
-      if (v5Equivalent.duration * 1000 !== phase.duration ||
-        (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-        (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-        const newStatus = v5Equivalent.isOpen
-          ? constants.PhaseStatusTypes.Open
-          : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      if (v5Equivalent.duration * 1000 !== phase.duration) {
+        // ||
+        // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
+        // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
+        // const newStatus = v5Equivalent.isOpen
+        //   ? constants.PhaseStatusTypes.Open
+        //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
         // update phase
         logger.debug(`Will update phase ${phase.project_phase_id}/${v5Equivalent.name} to duration ${v5Equivalent.duration * 1000} milli`)
         await timelineService.updatePhase(
@@ -92,7 +94,9 @@ async function syncChallengePhases (legacyId, v5Phases) {
           v5Equivalent.scheduledStartDate,
           v5Equivalent.scheduledEndDate,
           v5Equivalent.duration * 1000,
-          newStatus)
+          phase.phase_status_id
+        )
+        // newStatus)
       }
     }
   }
@@ -675,29 +679,12 @@ async function processUpdate (message) {
       throw new Error(`Could not find challenge ${legacyId}`)
     }
   } catch (e) {
-    // postponne kafka event
+    // postpone kafka event
     logger.warn(`Error getting challenge by id, RETRY TURNED OFF ${JSON.stringify(e)}`)
-    // logger.info('Challenge does not exist yet. Will post the same message back to the bus API')
-    // logger.error(`Error: ${JSON.stringify(e)}`)
-
-    // const retryCountIdentifier = `${config.KAFKA_GROUP_ID.split(' ').join('_')}_retry_count`
-    // let currentRetryCount = parseInt(_.get(message.payload, retryCountIdentifier, 1), 10)
-    // if (currentRetryCount <= config.MAX_RETRIES) {
-    //   await new Promise((resolve) => {
-    //     setTimeout(async () => {
-    //       currentRetryCount += 1
-    //       await helper.postBusEvent(config.UPDATE_CHALLENGE_TOPIC, { ...message.payload, [retryCountIdentifier]: currentRetryCount })
-    //       resolve()
-    //     }, config.RETRY_TIMEOUT * currentRetryCount)
-    //   })
-    // } else {
-    //   logger.error(`Failed to process message after ${config.MAX_RETRIES} retries. Aborting...`)
-    // }
-    // return
   }
 
   const v4GroupIds = await groupService.getGroupsForChallenge(legacyId)
-  logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
+  // logger.info(`GroupIDs Found in Informix: ${JSON.stringify(v4GroupIds)}`)
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken, false, v4GroupIds)
   logger.debug('Result from parsePayload:')
@@ -717,20 +704,7 @@ async function processUpdate (message) {
         logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
       }
     }
-    // Thomas - get rid of this and add required info directly via IFX
-    // try {
-    //   if (challenge) {
-    //     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-    //   }
-    // } catch (e) {
-    //   logger.warn('Failed to update the challenge via the V4 API')
-    //   logger.error(e)
-    // }
-    if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases)
-    } else {
-      logger.info('Will skip syncing phases as the challenge is a task...')
-    }
+
     await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
     await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
@@ -740,8 +714,8 @@ async function processUpdate (message) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
         logger.info('Activating challenge...')
-        await activateChallenge(legacyId)
-        logger.info('Activated!')
+        const activated = await activateChallenge(legacyId)
+        logger.info(`Activated! ${JSON.stringify(activated)}`)
         // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
         await rePostResourcesOnKafka(message.payload.id, m2mToken)
       }
@@ -757,6 +731,12 @@ async function processUpdate (message) {
         } else {
           logger.info('Challenge type is not a task.. Skip closing challenge...')
         }
+      }
+
+      if (!_.get(message.payload, 'task.isTask')) {
+        await syncChallengePhases(legacyId, challenge.phases)
+      } else {
+        logger.info('Will skip syncing phases as the challenge is a task...')
       }
     }
 
