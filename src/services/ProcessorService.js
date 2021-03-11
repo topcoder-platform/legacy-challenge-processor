@@ -496,6 +496,8 @@ async function processCreate (message) {
   }
 
   const m2mToken = await helper.getM2MToken()
+  const createdByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.createdBy'))
+  const updatedByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
   logger.debug('Parsed Payload', saveDraftContestDTO)
@@ -514,7 +516,7 @@ async function processCreate (message) {
     await helper.forceV4ESFeeder(newChallenge.body.result.content.id)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, newChallenge.body.result.content.id)
     // await associateChallengeTerms(saveDraftContestDTO.termsToBeAdded, saveDraftContestDTO.termsToBeRemoved, newChallenge.body.result.content.id)
-    await setCopilotPayment(challengeUuid, newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy'), m2mToken)
+    await setCopilotPayment(challengeUuid, newChallenge.body.result.content.id, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
     await helper.patchRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, {
       legacy: {
         ...message.payload.legacy,
@@ -528,7 +530,7 @@ async function processCreate (message) {
     }, m2mToken)
     // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
     await rePostResourcesOnKafka(challengeUuid, m2mToken)
-    await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, _.get(message, 'payload.createdBy'))
+    await timelineService.enableTimelineNotifications(newChallenge.body.result.content.id, createdByUserId)
     logger.debug('End of processCreate')
     return newChallenge.body.result.content.id
   } catch (e) {
@@ -603,6 +605,9 @@ async function processUpdate (message) {
   }
   const m2mToken = await helper.getM2MToken()
 
+  const createdByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.createdBy'))
+  const updatedByUserId = await helper.getMemberIdByHandle(_.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+
   let challenge
   try {
     // ensure challenge existed
@@ -640,41 +645,28 @@ async function processUpdate (message) {
   logger.debug(JSON.stringify(saveDraftContestDTO, null, 2))
   // logger.debug('Parsed Payload', saveDraftContestDTO)
   try {
-    try {
-      if (challenge) {
-        await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
-      }
-    } catch (e) {
-      logger.warn('Failed to update the challenge via the V4 API')
-      logger.error(e)
-    }
-
-    // Update metadata in IFX
-    if (message.payload.metadata && message.payload.metadata.length > 0) {
-      for (const metadataKey of _.keys(constants.supportedMetadata)) {
-        const entry = _.find(message.payload.metadata, meta => meta.name === metadataKey)
-        if (entry) {
-          if (metadataKey === 'submissionLimit') {
-            // data here is JSON stringified
-            try {
-              const parsedEntryValue = JSON.parse(entry.value)
-              if (parsedEntryValue.limit) {
-                entry.value = parsedEntryValue.count
-              } else {
-                entry.value = null
-              }
-            } catch (e) {
-              entry.value = null
-            }
-          }
-          try {
-            await metadataService.createOrUpdateMetadata(legacyId, constants.supportedMetadata[metadataKey], entry.value, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-          } catch (e) {
-            logger.warn(`Failed to set ${metadataKey} (${constants.supportedMetadata[metadataKey]})`)
-          }
+    // extract metadata from challenge and insert into IFX
+    let metaValue
+    for (const metadataKey of _.keys(constants.supportedMetadata)) {
+      try {
+        metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
+        if (metaValue !== null && metaValue !== '') {
+          logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+          await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, updatedByUserId)
         }
+      } catch (e) {
+        logger.warn(`Failed to set ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
       }
     }
+    // try {
+    //   if (challenge) {
+    //     await helper.putRequest(`${config.V4_CHALLENGE_API_URL}/${legacyId}`, { param: _.omit(saveDraftContestDTO, ['groupsToBeAdded', 'groupsToBeDeleted']) }, m2mToken)
+    //   }
+    // } catch (e) {
+    //   logger.warn('Failed to update the challenge via the V4 API')
+    //   logger.error(e)
+    // }
+
     if (message.payload.status && challenge) {
       // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
       if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
@@ -703,10 +695,10 @@ async function processUpdate (message) {
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
-    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
+    await updateMemberPayments(message.payload.legacyId, message.payload.prizeSets, updatedByUserId)
     await associateChallengeGroups(saveDraftContestDTO.groupsToBeAdded, saveDraftContestDTO.groupsToBeDeleted, legacyId)
-    await associateChallengeTerms(message.payload.terms, legacyId, _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'))
-    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), _.get(message, 'payload.createdBy'), _.get(message, 'payload.updatedBy') || _.get(message, 'payload.createdBy'), m2mToken)
+    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+    await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
     try {
       await helper.forceV4ESFeeder(legacyId)
