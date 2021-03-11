@@ -30,8 +30,9 @@ const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On
  * @param {String} dateStr the date in string format
  */
 function formatDate (dateStr) {
-  logger.info(`Formatting date ${dateStr}`)
-  return momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
+  const date = momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
+  logger.info(`Formatting date ${dateStr} New Date ${date}`)
+  return date
 }
 
 /**
