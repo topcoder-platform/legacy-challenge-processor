@@ -105,7 +105,7 @@ const supportedMetadata = {
   },
   59: {
     method: metadataExtractor.extractReviewFeedback,
-    defaultValue: true,
+    defaultValue: false,
     description: 'Review Feedback Flag'
   },
   84: {
