@@ -657,7 +657,7 @@ async function processMessage (message) {
     try {
       metaValue = constants.supportedMetadata[metadataKey].method(message.payload, constants.supportedMetadata[metadataKey].defaultValue)
       if (metaValue !== null && metaValue !== '') {
-        // logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
+        logger.info(`Setting ${constants.supportedMetadata[metadataKey].description} to ${metaValue}`)
         await metadataService.createOrUpdateMetadata(legacyId, metadataKey, metaValue, updatedByUserId)
       }
     } catch (e) {
@@ -668,7 +668,7 @@ async function processMessage (message) {
   await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
   await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
   await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-  await setCopilotPayment(message.payload.id, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+  await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
   if (message.payload.status && challenge) {
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
@@ -677,7 +677,7 @@ async function processMessage (message) {
       const activated = await activateChallenge(legacyId)
       logger.info(`Activated! ${JSON.stringify(activated)}`)
       // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
-      await rePostResourcesOnKafka(message.payload.id, m2mToken)
+      await rePostResourcesOnKafka(challengeUuid, m2mToken)
     }
     if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
       if (message.payload.task.isTask) {

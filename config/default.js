@@ -51,6 +51,7 @@ module.exports = {
   V5_RESOURCES_API_URL: process.env.V5_RESOURCES_API_URL || 'http://localhost:4000/v5/resources',
   V5_TERMS_API_URL: process.env.V5_TERMS_API_URL || 'http://localhost:4000/v5/terms',
   V5_RESOURCE_ROLES_API_URL: process.env.V5_RESOURCE_ROLES_API_URL || 'http://localhost:4000/v5/resource-roles',
+  MEMBER_API_URL: process.env.MEMBER_API_URL || 'https://api.topcoder-dev.com/v5/members',
 
   V5_CHALLENGE_TYPE_API_URL: process.env.V5_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v5/challenge-types',
   V4_CHALLENGE_TYPE_API_URL: process.env.V4_CHALLENGE_TYPE_API_URL || 'http://localhost:4000/v4/challenge-types',
@@ -60,7 +61,6 @@ module.exports = {
   V5_PROJECTS_API_URL: process.env.V5_PROJECTS_API_URL || 'https://api.topcoder-dev.com/v5/projects',
   V5_CHALLENGE_MIGRATION_API_URL: process.env.V5_CHALLENGE_MIGRATION_API_URL || 'https://api.topcoder-dev.com/v5/challenge-migration',
   V4_ES_FEEDER_API_URL: process.env.V4_ES_FEEDER_API_URL || 'https://api.topcoder-dev.com/v4/esfeeder/challenges',
-  MEMBER_API_URL: process.env.MEMBER_API_URL || 'https://api.topcoder-dev.com/v5/members',
 
   V5_GROUPS_API_URL: process.env.V5_GROUPS_API_URL || 'https://api.topcoder-dev.com/v5/groups',
 
