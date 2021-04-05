@@ -254,7 +254,7 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
  */
 async function setCopilotPayment (challengeId, legacyChallengeId, prizeSets = [], createdBy, updatedBy, m2mToken) {
   try {
-    const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', null)
+    const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', 0)
     if (copilotPayment) {
       logger.debug('Fetching challenge copilot...')
       const res = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeId}&roleId=${config.COPILOT_ROLE_ID}`, m2mToken)
@@ -264,9 +264,7 @@ async function setCopilotPayment (challengeId, legacyChallengeId, prizeSets = []
         return
       }
       logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
-      if (copilotPayment !== null && copilotPayment >= 0) {
-        await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
-      }
+      await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
       await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
     }
   } catch (e) {
