@@ -255,18 +255,16 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
 async function setCopilotPayment (challengeId, legacyChallengeId, prizeSets = [], createdBy, updatedBy, m2mToken) {
   try {
     const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', 0)
-    if (copilotPayment) {
-      logger.debug('Fetching challenge copilot...')
-      const res = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeId}&roleId=${config.COPILOT_ROLE_ID}`, m2mToken)
-      const [copilotResource] = res.body
-      if (!copilotResource) {
-        logger.warn(`Copilot does not exist for challenge ${challengeId} (legacy: ${legacyChallengeId})`)
-        return
-      }
-      logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
-      await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
-      await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
+    logger.debug('Fetching challenge copilot...')
+    const res = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeId}&roleId=${config.COPILOT_ROLE_ID}`, m2mToken)
+    const [copilotResource] = res.body
+    if (!copilotResource) {
+      logger.warn(`Copilot does not exist for challenge ${challengeId} (legacy: ${legacyChallengeId})`)
+      return
     }
+    logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
+    await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
+    await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
   } catch (e) {
     logger.error('Failed to set the copilot payment!')
     logger.debug(e)
