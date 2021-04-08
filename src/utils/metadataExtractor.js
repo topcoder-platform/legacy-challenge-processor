@@ -165,7 +165,7 @@ function extractEstimateEffortHours (challenge, defaultValue) {
  * @param {Any} defaultValue the default value
  */
 function extractEstimateEffortOffshore (challenge, defaultValue) {
-  const entry = getMeta(challenge.metadata, 'effortHoursOffshore')
+  const entry = getMeta(challenge.metadata, 'offshoreEfforts')
   if (!entry) return _.toString(defaultValue)
   return _.toNumber(entry.value)
 }
@@ -176,7 +176,7 @@ function extractEstimateEffortOffshore (challenge, defaultValue) {
  * @param {Any} defaultValue the default value
  */
 function extractEstimateEffortOnsite (challenge, defaultValue) {
-  const entry = getMeta(challenge.metadata, 'effortHoursOnshore')
+  const entry = getMeta(challenge.metadata, 'onsiteEfforts')
   if (!entry) return _.toString(defaultValue)
   return _.toNumber(entry.value)
 }
