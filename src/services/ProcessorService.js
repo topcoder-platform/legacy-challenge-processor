@@ -688,12 +688,7 @@ async function processMessage (message) {
         logger.info('Challenge type is not a task.. Skip closing challenge...')
       }
     }
-
-    if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases)
-    } else {
-      logger.info('Will skip syncing phases as the challenge is a task...')
-    }
+    await syncChallengePhases(legacyId, message.payload.phases)
   }
 
   try {
