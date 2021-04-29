@@ -46,6 +46,14 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
     return
   }
 
+  if (_.includes(config.IGNORED_ORIGINATORS, messageJSON.originator)) {
+    logger.error(`The message originator is in the ignored list. Originator: ${messageJSON.originator}`)
+
+    // commit the message and ignore it
+    await consumer.commitOffset({ topic, partition, offset: m.offset })
+    return
+  }
+
   // do not trust the message payload
   // the message.payload will be replaced with the data from the API
   try {

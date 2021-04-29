@@ -85,5 +85,7 @@ module.exports = {
   SYNC_V5_TERM_UUID: process.env.SYNC_V5_TERM_UUID || '317cd8f9-d66c-4f2a-8774-63c612d99cd4',
   SYNC_V5_WRITE_ENABLED: process.env.SYNC_V5_WRITE_ENABLED === 'true' || false,
 
-  TIMEZONE: process.env.TIMEZONE || 'America/New_York'
+  TIMEZONE: process.env.TIMEZONE || 'America/New_York',
+
+  IGNORED_ORIGINATORS: process.env.IGNORED_ORIGINATORS ? process.env.IGNORED_ORIGINATORS.split(',') : ['legacy-migration-script']
 }
