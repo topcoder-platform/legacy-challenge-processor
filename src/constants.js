@@ -68,6 +68,11 @@ const supportedMetadata = {
     defaultValue: 0,
     description: 'DR points'
   },
+  57: {
+    method: metadataExtractor.extractMarkup,
+    defaultValue: 0,
+    description: 'Markup'
+  },
   35: {
     method: metadataExtractor.extractSpecReviewCost,
     defaultValue: null,
