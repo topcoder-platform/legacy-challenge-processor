@@ -20,6 +20,15 @@ function extractBillingProject (challenge, defaultValue) {
 }
 
 /**
+ * Extract markup
+ * @param {Object} challenge the challenge object
+ * @param {Any} defaultValue the default value
+ */
+function extractMarkup (challenge, defaultValue) {
+  return _.toString(_.get(challenge, 'billing.markup', defaultValue))
+}
+
+/**
  * Extract submission limit
  * @param {Object} challenge the challenge object
  * @param {Any} defaultValue the default value
@@ -182,6 +191,7 @@ function extractEstimateEffortOnsite (challenge, defaultValue) {
 }
 
 module.exports = {
+  extractMarkup,
   extractBillingProject,
   extractSubmissionLimit,
   extractSpecReviewCost,
