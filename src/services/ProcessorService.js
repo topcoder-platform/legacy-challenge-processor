@@ -605,8 +605,8 @@ async function createChallenge (saveDraftContestDTO, challengeUuid, createdByUse
  * @param {Object} message the kafka message
  */
 async function processMessage (message) {
-  if (_.get(message, 'payload.legacy.pureV5Task')) {
-    logger.debug(`Challenge ${message.payload.id} is a pure v5 task. Will skip...`)
+  if (_.get(message, 'payload.legacy.pureV5Task') || _.get(message, 'payload.legacy.pureV5')) {
+    logger.debug(`Challenge ${message.payload.id} is a pure v5 task or challenge. Will skip...`)
     return
   }
 
