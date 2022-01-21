@@ -615,6 +615,11 @@ async function processMessage (message) {
     return
   }
 
+  if (message.payload.status === constants.challengeStatuses.Approved) {
+    logger.debug(`Will skip updating on legacy as status is ${constants.challengeStatuses.Approved}`)
+    return
+  }
+
   logger.info(`Processing Kafka Message: ${JSON.stringify(message)}`)
 
   const createdByUserHandle = _.get(message, 'payload.createdBy')

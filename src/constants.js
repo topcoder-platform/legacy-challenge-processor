@@ -33,6 +33,7 @@ const createChallengeStatusesMap = {
 const challengeStatuses = {
   New: 'New',
   Draft: 'Draft',
+  Approved: 'Approved',
   Canceled: 'Canceled',
   Active: 'Active',
   Completed: 'Completed',
