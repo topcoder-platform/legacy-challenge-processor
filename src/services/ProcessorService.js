@@ -372,7 +372,7 @@ async function parsePayload (payload, m2mToken) {
       name: payload.name,
       reviewType: _.get(payload, 'legacy.reviewType', 'INTERNAL'),
       projectId,
-      status: payload.status
+      status: payload.status === constants.challengeStatuses.CancelledPaymentFailed ? constants.challengeStatuses.CancelledFailedScreening : payload.status
     }
     if (payload.billingAccountId) {
       data.billingAccountId = payload.billingAccountId
