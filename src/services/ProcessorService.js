@@ -16,6 +16,7 @@ const copilotPaymentService = require('./copilotPaymentService')
 const timelineService = require('./timelineService')
 const metadataService = require('./metadataService')
 const paymentService = require('./paymentService')
+const { createOrSetNumberOfReviewers } = require('./selfServiceReviewerService')
 
 /**
  * Drop and recreate phases in ifx
@@ -68,8 +69,10 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
  * Sync the information from the v5 phases into legacy
  * @param {Number} legacyId the legacy challenge ID
  * @param {Array} v5Phases the v5 phases
+ * @param {Boolean} isSelfService is the challenge self-service
+ * @param {String} createdBy the created by
  */
-async function syncChallengePhases (legacyId, v5Phases) {
+async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
@@ -103,6 +106,10 @@ async function syncChallengePhases (legacyId, v5Phases) {
       }
     } else {
       logger.info(`No v5 Equivalent Found for ${phaseName}`)
+    }
+    if (isSelfService && phaseName === 'Review') {
+      // make sure to set the required reviewers to 2
+      await createOrSetNumberOfReviewers(phase.project_phase_id, 2, createdBy)
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -695,7 +702,7 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases)
+      await syncChallengePhases(legacyId, message.payload.phases, _.get(message, 'payload.legacy.selfService'), createdByUserId)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
@@ -721,7 +728,8 @@ processMessage.schema = {
         reviewType: Joi.string().required(),
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
-        forumId: Joi.number().integer().positive()
+        forumId: Joi.number().integer().positive(),
+        selfService: Joi.boolean()
       }).unknown(true),
       task: Joi.object().keys({
         isTask: Joi.boolean().default(false),
