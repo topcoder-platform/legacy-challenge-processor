@@ -604,6 +604,7 @@ async function createChallenge (saveDraftContestDTO, challengeUuid, createdByUse
   // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
   await rePostResourcesOnKafka(challengeUuid, m2mToken)
   await timelineService.enableTimelineNotifications(legacyId, createdByUserId)
+  await metadataService.createOrUpdateMetadata(legacyId, 9, 'On', createdByUserId) // autopilot
   return legacyId
 }
 
@@ -684,6 +685,8 @@ async function processMessage (message) {
       logger.info('Activating challenge...')
       const activated = await activateChallenge(legacyId)
       logger.info(`Activated! ${JSON.stringify(activated)}`)
+      // make sure autopilot is on
+      await metadataService.createOrUpdateMetadata(legacyId, 9, 'On', createdByUserId) // autopilot
       // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
       await rePostResourcesOnKafka(challengeUuid, m2mToken)
     }
