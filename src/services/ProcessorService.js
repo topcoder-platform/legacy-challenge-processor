@@ -17,6 +17,7 @@ const timelineService = require('./timelineService')
 const metadataService = require('./metadataService')
 const paymentService = require('./paymentService')
 const { createOrSetNumberOfReviewers } = require('./selfServiceReviewerService')
+const { disableTimelineNotifications } = require('./selfServiceNotificationService')
 
 /**
  * Drop and recreate phases in ifx
@@ -649,6 +650,9 @@ async function processMessage (message) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await createChallenge(saveDraftContestDTO, challengeUuid, createdByUserId, message.payload.legacy, m2mToken)
     await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
+    if (_.get(message, 'payload.legacy.selfService')) {
+      await disableTimelineNotifications(legacyId, createdByUserId) // disable
+    }
   }
 
   let challenge
