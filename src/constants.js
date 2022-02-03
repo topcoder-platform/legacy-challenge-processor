@@ -33,6 +33,7 @@ const createChallengeStatusesMap = {
 const challengeStatuses = {
   New: 'New',
   Draft: 'Draft',
+  Approved: 'Approved',
   Canceled: 'Canceled',
   Active: 'Active',
   Completed: 'Completed',
@@ -43,7 +44,8 @@ const challengeStatuses = {
   CancelledWinnerUnresponsive: 'Cancelled - Winner Unresponsive',
   CancelledClientRequest: 'Cancelled - Client Request',
   CancelledRequirementsInfeasible: 'Cancelled - Requirements Infeasible',
-  CancelledZeroRegistrations: 'Cancelled - Zero Registrations'
+  CancelledZeroRegistrations: 'Cancelled - Zero Registrations',
+  CancelledPaymentFailed: 'Cancelled - Payment Failed'
 }
 
 const PhaseStatusTypes = {

@@ -16,6 +16,8 @@ const copilotPaymentService = require('./copilotPaymentService')
 const timelineService = require('./timelineService')
 const metadataService = require('./metadataService')
 const paymentService = require('./paymentService')
+const { createOrSetNumberOfReviewers } = require('./selfServiceReviewerService')
+const { disableTimelineNotifications } = require('./selfServiceNotificationService')
 
 /**
  * Drop and recreate phases in ifx
@@ -68,8 +70,10 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
  * Sync the information from the v5 phases into legacy
  * @param {Number} legacyId the legacy challenge ID
  * @param {Array} v5Phases the v5 phases
+ * @param {Boolean} isSelfService is the challenge self-service
+ * @param {String} createdBy the created by
  */
-async function syncChallengePhases (legacyId, v5Phases) {
+async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
@@ -103,6 +107,10 @@ async function syncChallengePhases (legacyId, v5Phases) {
       }
     } else {
       logger.info(`No v5 Equivalent Found for ${phaseName}`)
+    }
+    if (isSelfService && phaseName === 'Review') {
+      // make sure to set the required reviewers to 2
+      await createOrSetNumberOfReviewers(phase.project_phase_id, 2, createdBy)
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -216,10 +224,10 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
   const standardTerms = _.find(v5Terms, e => e.id === config.V5_TERMS_STANDARD_ID)
   const legacyStandardTerms = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_STANDARD_ID))
 
-  // logger.debug(`NDA: ${config.V5_TERMS_NDA_ID} - ${JSON.stringify(nda)}`)
-  // logger.debug(`Standard Terms: ${config.V5_TERMS_STANDARD_ID} - ${JSON.stringify(standardTerms)}`)
-  // logger.debug(`Legacy NDA: ${JSON.stringify(legacyNDA)}`)
-  // logger.debug(`Legacy Standard Terms: ${JSON.stringify(legacyStandardTerms)}`)
+  logger.debug(`NDA: ${config.V5_TERMS_NDA_ID} - ${JSON.stringify(nda)}`)
+  logger.debug(`Standard Terms: ${config.V5_TERMS_STANDARD_ID} - ${JSON.stringify(standardTerms)}`)
+  logger.debug(`Legacy NDA: ${JSON.stringify(legacyNDA)}`)
+  logger.debug(`Legacy Standard Terms: ${JSON.stringify(legacyStandardTerms)}`)
 
   const m2mToken = await helper.getM2MToken()
   if (standardTerms && standardTerms.id && !legacyStandardTerms) {
@@ -254,21 +262,17 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
  */
 async function setCopilotPayment (challengeId, legacyChallengeId, prizeSets = [], createdBy, updatedBy, m2mToken) {
   try {
-    const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', null)
-    if (copilotPayment) {
-      logger.debug('Fetching challenge copilot...')
-      const res = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeId}&roleId=${config.COPILOT_ROLE_ID}`, m2mToken)
-      const [copilotResource] = res.body
-      if (!copilotResource) {
-        logger.warn(`Copilot does not exist for challenge ${challengeId} (legacy: ${legacyChallengeId})`)
-        return
-      }
-      logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
-      if (copilotPayment !== null && copilotPayment >= 0) {
-        await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
-      }
-      await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
+    const copilotPayment = _.get(_.find(prizeSets, p => p.type === config.COPILOT_PAYMENT_TYPE), 'prizes[0].value', 0)
+    logger.debug('Fetching challenge copilot...')
+    const res = await helper.getRequest(`${config.V5_RESOURCES_API_URL}?challengeId=${challengeId}&roleId=${config.COPILOT_ROLE_ID}`, m2mToken)
+    const [copilotResource] = res.body
+    if (!copilotResource) {
+      logger.warn(`Copilot does not exist for challenge ${challengeId} (legacy: ${legacyChallengeId})`)
+      return
     }
+    logger.debug(`Setting Copilot Payment: ${copilotPayment} for legacyId ${legacyChallengeId} for copilot ${copilotResource.memberId}`)
+    await copilotPaymentService.setManualCopilotPayment(legacyChallengeId, createdBy, updatedBy)
+    await copilotPaymentService.setCopilotPayment(legacyChallengeId, copilotPayment, createdBy, updatedBy)
   } catch (e) {
     logger.error('Failed to set the copilot payment!')
     logger.debug(e)
@@ -376,7 +380,7 @@ async function parsePayload (payload, m2mToken) {
       name: payload.name,
       reviewType: _.get(payload, 'legacy.reviewType', 'INTERNAL'),
       projectId,
-      status: payload.status
+      status: payload.status === constants.challengeStatuses.CancelledPaymentFailed ? constants.challengeStatuses.CancelledFailedScreening : payload.status
     }
     if (payload.billingAccountId) {
       data.billingAccountId = payload.billingAccountId
@@ -601,6 +605,7 @@ async function createChallenge (saveDraftContestDTO, challengeUuid, createdByUse
   // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
   await rePostResourcesOnKafka(challengeUuid, m2mToken)
   await timelineService.enableTimelineNotifications(legacyId, createdByUserId)
+  await metadataService.createOrUpdateMetadata(legacyId, 9, 'On', createdByUserId) // autopilot
   return legacyId
 }
 
@@ -609,13 +614,18 @@ async function createChallenge (saveDraftContestDTO, challengeUuid, createdByUse
  * @param {Object} message the kafka message
  */
 async function processMessage (message) {
-  if (_.get(message, 'payload.legacy.pureV5Task')) {
-    logger.debug(`Challenge ${message.payload.id} is a pure v5 task. Will skip...`)
+  if (_.get(message, 'payload.legacy.pureV5Task') || _.get(message, 'payload.legacy.pureV5')) {
+    logger.debug(`Challenge ${message.payload.id} is a pure v5 task or challenge. Will skip...`)
     return
   }
 
   if (message.payload.status === constants.challengeStatuses.New) {
     logger.debug(`Will skip creating on legacy as status is ${constants.challengeStatuses.New}`)
+    return
+  }
+
+  if (message.payload.status === constants.challengeStatuses.Approved) {
+    logger.debug(`Will skip updating on legacy as status is ${constants.challengeStatuses.Approved}`)
     return
   }
 
@@ -640,6 +650,9 @@ async function processMessage (message) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await createChallenge(saveDraftContestDTO, challengeUuid, createdByUserId, message.payload.legacy, m2mToken)
     await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
+    if (_.get(message, 'payload.legacy.selfService')) {
+      await disableTimelineNotifications(legacyId, createdByUserId) // disable
+    }
   }
 
   let challenge
@@ -676,6 +689,8 @@ async function processMessage (message) {
       logger.info('Activating challenge...')
       const activated = await activateChallenge(legacyId)
       logger.info(`Activated! ${JSON.stringify(activated)}`)
+      // make sure autopilot is on
+      await metadataService.createOrUpdateMetadata(legacyId, 9, 'On', createdByUserId) // autopilot
       // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
       await rePostResourcesOnKafka(challengeUuid, m2mToken)
     }
@@ -694,7 +709,7 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases)
+      await syncChallengePhases(legacyId, message.payload.phases, _.get(message, 'payload.legacy.selfService'), createdByUserId)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
@@ -720,7 +735,8 @@ processMessage.schema = {
         reviewType: Joi.string().required(),
         confidentialityType: Joi.string(),
         directProjectId: Joi.number(),
-        forumId: Joi.number().integer().positive()
+        forumId: Joi.number().integer().positive(),
+        selfService: Joi.boolean()
       }).unknown(true),
       task: Joi.object().keys({
         isTask: Joi.boolean().default(false),
