@@ -110,7 +110,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     }
     if (isSelfService && phaseName === 'Review') {
       // make sure to set the required reviewers to 2
-      await createOrSetNumberOfReviewers(phase.project_phase_id, 2, createdBy)
+      await createOrSetNumberOfReviewers(phase.project_phase_id, '2', createdBy)
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
