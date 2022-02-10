@@ -58,13 +58,16 @@ async function createOrSetNumberOfReviewers (phaseId, value, createdBy) {
     if (existing) {
       if (value) {
         const query = await prepare(connection, QUERY_UPDATE)
+        logger.info(`Will update with values: ${value}, ${createdBy}, ${phaseId}`)
         result = await query.executeAsync([value, createdBy, phaseId])
       } else {
         const query = await prepare(connection, QUERY_DELETE)
-        result = await query.executeAsync([phaseId, value])
+        logger.info(`Will delete with values: ${phaseId}`)
+        result = await query.executeAsync([phaseId])
       }
     } else {
       const query = await prepare(connection, QUERY_CREATE)
+      logger.info(`Will delete with values: ${phaseId}, ${value}, ${createdBy}, ${createdBy}`)
       result = await query.executeAsync([phaseId, value, createdBy, createdBy])
     }
     await connection.commitTransactionAsync()
