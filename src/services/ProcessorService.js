@@ -84,7 +84,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
       // Compare duration and status
-      if (v5Equivalent.duration * 1000 !== phase.duration * 1) {
+      if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
         // ||
         // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
         // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
@@ -110,7 +110,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     }
     if (isSelfService && phaseName === 'Review') {
       // make sure to set the required reviewers to 2
-      await createOrSetNumberOfReviewers(phase.project_phase_id, '2', createdBy)
+      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), '2', _.toString(createdBy))
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -709,7 +709,7 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases, _.get(message, 'payload.legacy.selfService'), createdByUserId)
+      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'))
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
