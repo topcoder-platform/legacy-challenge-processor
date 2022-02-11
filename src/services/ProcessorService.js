@@ -84,7 +84,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
       // Compare duration and status
-      if (v5Equivalent.duration * 1000 !== phase.duration * 1) {
+      if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
         // ||
         // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
         // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
