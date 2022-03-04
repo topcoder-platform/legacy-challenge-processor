@@ -69,8 +69,7 @@ workflows:
           filters:
             branches:
               only:
-                - develop
-                - feature/negative_length_error_fix
+                - issue_dup
 
       # Production builds are exectuted only on tagged commits to the
       # master branch.
