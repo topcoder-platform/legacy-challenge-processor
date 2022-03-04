@@ -728,6 +728,7 @@ processMessage.schema = {
     originator: Joi.string().required(),
     timestamp: Joi.date().required(),
     'mime-type': Joi.string().required(),
+    key: Joi.string().allow(null),
     payload: Joi.object().keys({
       legacyId: Joi.number().integer().positive(),
       legacy: Joi.object().keys({
