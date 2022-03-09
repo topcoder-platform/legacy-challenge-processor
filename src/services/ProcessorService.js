@@ -84,27 +84,27 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
       // Compare duration and status
-      if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
-        // ||
-        // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-        // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-        // const newStatus = v5Equivalent.isOpen
-        //   ? constants.PhaseStatusTypes.Open
-        //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-        // update phase
-        logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-        await timelineService.updatePhase(
-          phase.project_phase_id,
-          legacyId,
-          v5Equivalent.scheduledStartDate,
-          v5Equivalent.scheduledEndDate,
-          v5Equivalent.duration * 1000,
-          phase.phase_status_id
-        )
-        // newStatus)
-      } else {
-        logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
-      }
+      // if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
+      // ||
+      // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
+      // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
+      // const newStatus = v5Equivalent.isOpen
+      //   ? constants.PhaseStatusTypes.Open
+      //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      // update phase
+      logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
+      await timelineService.updatePhase(
+        phase.project_phase_id,
+        legacyId,
+        v5Equivalent.scheduledStartDate,
+        v5Equivalent.scheduledEndDate,
+        v5Equivalent.duration * 1000,
+        phase.phase_status_id
+      )
+      // newStatus)
+      // } else {
+      //   logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
+      // }
     } else {
       logger.info(`No v5 Equivalent Found for ${phaseName}`)
     }
