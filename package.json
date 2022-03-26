@@ -10,7 +10,9 @@
     "mock-api": "NODE_ENV=test node test/mock/mock",
     "test": "nyc --reporter=html --reporter=text mocha test/unit/test.js --timeout 20000 --exit",
     "e2e": "nyc --reporter=html --reporter=text mocha test/e2e/test.js --timeout 20000 --exit",
-    "sync-terms": "node src/scripts/sync-terms.js"
+    "sync-terms": "node src/scripts/sync-terms.js",
+    "prepare": "npm run snyk-protect",
+    "snyk-protect": "snyk-protect"
   },
   "repository": "https://github.com/topcoder-platform/legacy-challenge-processor",
   "author": "TCSCODER",
@@ -32,7 +34,7 @@
     "gulp": "^4.0.2",
     "http-json-response": "^1.0.1",
     "ifxnjs": "^10.0.5",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.20",
     "moment-timezone": "^0.5.32",
     "no-kafka": "^3.4.3",
     "q": "^1.5.1",
@@ -41,7 +43,8 @@
     "tc-core-library-js": "github:appirio-tech/tc-core-library-js.git#v2.6.4",
     "underscore": "^1.10.2",
     "util": "^0.12.3",
-    "winston": "^3.3.3"
+    "winston": "^3.3.3",
+    "@snyk/protect": "latest"
   },
   "engines": {
     "node": "10.x"
@@ -58,5 +61,6 @@
       "test/unit/test.js",
       "test/e2e/test.js"
     ]
-  }
+  },
+  "snyk": true
 }
