@@ -73,7 +73,7 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
  * @param {Boolean} isSelfService is the challenge self-service
  * @param {String} createdBy the created by
  */
-async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService) {
+async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService, numOfReviewers) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
@@ -110,7 +110,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     }
     if (isSelfService && phaseName === 'Review') {
       // make sure to set the required reviewers to 2
-      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), '2', _.toString(createdBy))
+      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -709,7 +709,8 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'))
+      const numOfReviewers = _.get(message, 'payload.legacy.selfService') && _.get(message, 'payload.trackId') === config.DEV_TRACK_ID ? 1 : 2
+      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
