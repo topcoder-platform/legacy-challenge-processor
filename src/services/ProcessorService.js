@@ -709,7 +709,7 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      const numOfReviewers = _.get(message, 'payload.legacy.selfService') && _.get(message, 'payload.trackId') === config.DEV_TRACK_ID ? 1 : 2
+      const numOfReviewers = 2
       await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
