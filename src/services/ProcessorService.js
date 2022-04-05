@@ -73,7 +73,7 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
  * @param {Boolean} isSelfService is the challenge self-service
  * @param {String} createdBy the created by
  */
-async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService) {
+async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService, numOfReviewers) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
@@ -84,33 +84,33 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
       // Compare duration and status
-      if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
-        // ||
-        // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-        // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-        // const newStatus = v5Equivalent.isOpen
-        //   ? constants.PhaseStatusTypes.Open
-        //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-        // update phase
-        logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-        await timelineService.updatePhase(
-          phase.project_phase_id,
-          legacyId,
-          v5Equivalent.scheduledStartDate,
-          v5Equivalent.scheduledEndDate,
-          v5Equivalent.duration * 1000,
-          phase.phase_status_id
-        )
-        // newStatus)
-      } else {
-        logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
-      }
+      // if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
+      // ||
+      // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
+      // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
+      // const newStatus = v5Equivalent.isOpen
+      //   ? constants.PhaseStatusTypes.Open
+      //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      // update phase
+      logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
+      await timelineService.updatePhase(
+        phase.project_phase_id,
+        legacyId,
+        v5Equivalent.scheduledStartDate,
+        v5Equivalent.scheduledEndDate,
+        v5Equivalent.duration * 1000,
+        phase.phase_status_id
+      )
+      // newStatus)
+      // } else {
+      //   logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
+      // }
     } else {
       logger.info(`No v5 Equivalent Found for ${phaseName}`)
     }
     if (isSelfService && phaseName === 'Review') {
       // make sure to set the required reviewers to 2
-      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), '2', _.toString(createdBy))
+      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -709,7 +709,8 @@ async function processMessage (message) {
     }
 
     if (!_.get(message.payload, 'task.isTask')) {
-      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'))
+      const numOfReviewers = 2
+      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers)
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
