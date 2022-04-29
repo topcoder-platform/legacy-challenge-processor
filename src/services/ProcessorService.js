@@ -199,10 +199,11 @@ async function getV5Terms (v5TermsId, m2mToken) {
  */
 async function associateChallengeGroups (v5groups, legacyId, m2mToken) {
   const { groupsToBeAdded, groupsToBeDeleted } = await getGroups(v5groups, legacyId, m2mToken)
-
+  logger.info(`Groups to add to challenge: ${legacyId}: ${groupsToBeAdded}`)
   for (const group of groupsToBeAdded) {
     await groupService.addGroupToChallenge(legacyId, group)
   }
+  logger.info(`Groups to remove from challenge: ${legacyId}: ${groupsToBeDeleted}`)
   for (const group of groupsToBeDeleted) {
     await groupService.removeGroupFromChallenge(legacyId, group)
   }
@@ -224,10 +225,10 @@ async function associateChallengeTerms (v5Terms, legacyChallengeId, createdBy, u
   const standardTerms = _.find(v5Terms, e => e.id === config.V5_TERMS_STANDARD_ID)
   const legacyStandardTerms = _.find(legacyTermsArray, e => _.toNumber(e.id) === _.toNumber(config.LEGACY_TERMS_STANDARD_ID))
 
-  logger.debug(`NDA: ${config.V5_TERMS_NDA_ID} - ${JSON.stringify(nda)}`)
-  logger.debug(`Standard Terms: ${config.V5_TERMS_STANDARD_ID} - ${JSON.stringify(standardTerms)}`)
-  logger.debug(`Legacy NDA: ${JSON.stringify(legacyNDA)}`)
-  logger.debug(`Legacy Standard Terms: ${JSON.stringify(legacyStandardTerms)}`)
+  // logger.debug(`NDA: ${config.V5_TERMS_NDA_ID} - ${JSON.stringify(nda)}`)
+  // logger.debug(`Standard Terms: ${config.V5_TERMS_STANDARD_ID} - ${JSON.stringify(standardTerms)}`)
+  // logger.debug(`Legacy NDA: ${JSON.stringify(legacyNDA)}`)
+  // logger.debug(`Legacy Standard Terms: ${JSON.stringify(legacyStandardTerms)}`)
 
   const m2mToken = await helper.getM2MToken()
   if (standardTerms && standardTerms.id && !legacyStandardTerms) {
@@ -646,13 +647,28 @@ async function processMessage (message) {
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
 
+  let setAssociations = true
+
   if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await createChallenge(saveDraftContestDTO, challengeUuid, createdByUserId, message.payload.legacy, m2mToken)
+    
     await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
+
     if (_.get(message, 'payload.legacy.selfService')) {
       await disableTimelineNotifications(legacyId, createdByUserId) // disable
     }
+
+    logger.info(`Update Member payments for challenge ${legacyId}`)
+    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
+    logger.info(`Associate groups for challenge ${legacyId}`)
+    await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
+    logger.info(`Associate challenge terms for challenge ${legacyId}`)
+    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+    logger.info(`set copilot for challenge ${legacyId}`)
+    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+    
+    setAssociations = false
   }
 
   let challenge
@@ -678,10 +694,13 @@ async function processMessage (message) {
     }
   }
 
-  await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
-  await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
-  await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-  await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+  if (setAssociations) {
+    logger.info(`Set Associations for challenge ${legacyId}`)
+    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
+    await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
+    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+  }
 
   if (message.payload.status && challenge) {
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
