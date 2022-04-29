@@ -199,11 +199,11 @@ async function getV5Terms (v5TermsId, m2mToken) {
  */
 async function associateChallengeGroups (v5groups, legacyId, m2mToken) {
   const { groupsToBeAdded, groupsToBeDeleted } = await getGroups(v5groups, legacyId, m2mToken)
-  logger.info(`Groups to add to challenge: ${legacyId}: ${groupsToBeAdded}`)
+  logger.info(`Groups to add to challenge: ${legacyId}: ${JSON.stringify(groupsToBeAdded)}`)
   for (const group of groupsToBeAdded) {
     await groupService.addGroupToChallenge(legacyId, group)
   }
-  logger.info(`Groups to remove from challenge: ${legacyId}: ${groupsToBeDeleted}`)
+  logger.info(`Groups to remove from challenge: ${legacyId}: ${JSON.stringify(groupsToBeDeleted)}`)
   for (const group of groupsToBeDeleted) {
     await groupService.removeGroupFromChallenge(legacyId, group)
   }
