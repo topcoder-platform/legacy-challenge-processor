@@ -659,13 +659,6 @@ async function processMessage (message) {
 
   }
 
-  let challenge
-  try {
-    challenge = await getChallengeById(m2mToken, legacyId)
-  } catch (e) {
-    throw new Error(`Error getting challenge by id - Error: ${JSON.stringify(e)}`)
-  }
-
   logger.debug('Result from parsePayload:')
   logger.debug(JSON.stringify(saveDraftContestDTO))
 
@@ -690,6 +683,19 @@ async function processMessage (message) {
   await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
   logger.info(`set copilot for challenge ${legacyId}`)
   await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+
+  try {
+    await helper.forceV4ESFeeder(legacyId)
+  } catch (e) {
+    logger.warn(`Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
+  }
+
+  let challenge
+  try {
+    challenge = await getChallengeById(m2mToken, legacyId)
+  } catch (e) {
+    throw new Error(`Error getting challenge by id - Error: ${JSON.stringify(e)}`)
+  }
 
   if (message.payload.status && challenge) {
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
@@ -722,12 +728,6 @@ async function processMessage (message) {
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
-  }
-
-  try {
-    await helper.forceV4ESFeeder(legacyId)
-  } catch (e) {
-    logger.warn(`Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
   }
 }
 
