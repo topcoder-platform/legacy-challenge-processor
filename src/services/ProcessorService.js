@@ -647,28 +647,16 @@ async function processMessage (message) {
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
 
-  let setAssociations = true
-
   if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await createChallenge(saveDraftContestDTO, challengeUuid, createdByUserId, message.payload.legacy, m2mToken)
-    
+
     await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
 
     if (_.get(message, 'payload.legacy.selfService')) {
       await disableTimelineNotifications(legacyId, createdByUserId) // disable
     }
 
-    logger.info(`Update Member payments for challenge ${legacyId}`)
-    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
-    logger.info(`Associate groups for challenge ${legacyId}`)
-    await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
-    logger.info(`Associate challenge terms for challenge ${legacyId}`)
-    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-    logger.info(`set copilot for challenge ${legacyId}`)
-    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
-    
-    setAssociations = false
   }
 
   let challenge
@@ -694,13 +682,14 @@ async function processMessage (message) {
     }
   }
 
-  if (setAssociations) {
-    logger.info(`Set Associations for challenge ${legacyId}`)
-    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
-    await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
-    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
-  }
+  logger.info(`Set Associations for challenge ${legacyId}`)
+  await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
+  logger.info(`Associate groups for challenge ${legacyId}`)
+  await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
+  logger.info(`Associate challenge terms for challenge ${legacyId}`)
+  await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+  logger.info(`set copilot for challenge ${legacyId}`)
+  await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
   if (message.payload.status && challenge) {
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
