@@ -685,6 +685,7 @@ async function processMessage (message) {
   await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
 
   try {
+    logger.info(`force V4 ES Feeder for the legacy challenge ${legacyId}`)
     await helper.forceV4ESFeeder(legacyId)
   } catch (e) {
     logger.warn(`Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
