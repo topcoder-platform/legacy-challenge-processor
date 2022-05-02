@@ -699,6 +699,8 @@ async function processMessage (message) {
   }
 
   if (message.payload.status && challenge) {
+    // Whether we need to sync v4 ES again
+    let needSyncV4ES = false
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
     if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
       logger.info('Activating challenge...')
@@ -708,6 +710,7 @@ async function processMessage (message) {
       await metadataService.createOrUpdateMetadata(legacyId, 9, 'On', createdByUserId) // autopilot
       // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
       await rePostResourcesOnKafka(challengeUuid, m2mToken)
+      needSyncV4ES = true
     }
     if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
       if (message.payload.task.isTask) {
@@ -718,6 +721,7 @@ async function processMessage (message) {
         const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
         logger.info(`Will close the challenge with ID ${legacyId}. Winner ${winnerId}!`)
         await closeChallenge(legacyId, winnerId)
+        needSyncV4ES = true
       } else {
         logger.info('Challenge type is not a task.. Skip closing challenge...')
       }
@@ -726,8 +730,17 @@ async function processMessage (message) {
     if (!_.get(message.payload, 'task.isTask')) {
       const numOfReviewers = 2
       await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers)
+      needSyncV4ES = true
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
+    }
+    if (needSyncV4ES) {
+      try {
+        logger.info(`Resync V4 ES for the legacy challenge ${legacyId}`)
+        await helper.forceV4ESFeeder(legacyId)
+      } catch (e) {
+        logger.warn(`Resync V4 - Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
+      }
     }
   }
 }
