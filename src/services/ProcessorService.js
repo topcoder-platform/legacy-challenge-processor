@@ -647,35 +647,16 @@ async function processMessage (message) {
 
   const saveDraftContestDTO = await parsePayload(message.payload, m2mToken)
 
-  let setAssociations = true
-
   if (!legacyId) {
     logger.debug('Legacy ID does not exist. Will create...')
     legacyId = await createChallenge(saveDraftContestDTO, challengeUuid, createdByUserId, message.payload.legacy, m2mToken)
-    
+
     await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
 
     if (_.get(message, 'payload.legacy.selfService')) {
       await disableTimelineNotifications(legacyId, createdByUserId) // disable
     }
 
-    logger.info(`Update Member payments for challenge ${legacyId}`)
-    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
-    logger.info(`Associate groups for challenge ${legacyId}`)
-    await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
-    logger.info(`Associate challenge terms for challenge ${legacyId}`)
-    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-    logger.info(`set copilot for challenge ${legacyId}`)
-    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
-    
-    setAssociations = false
-  }
-
-  let challenge
-  try {
-    challenge = await getChallengeById(m2mToken, legacyId)
-  } catch (e) {
-    throw new Error(`Error getting challenge by id - Error: ${JSON.stringify(e)}`)
   }
 
   logger.debug('Result from parsePayload:')
@@ -694,15 +675,32 @@ async function processMessage (message) {
     }
   }
 
-  if (setAssociations) {
-    logger.info(`Set Associations for challenge ${legacyId}`)
-    await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
-    await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
-    await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
-    await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+  logger.info(`Set Associations for challenge ${legacyId}`)
+  await updateMemberPayments(legacyId, message.payload.prizeSets, updatedByUserId)
+  logger.info(`Associate groups for challenge ${legacyId}`)
+  await associateChallengeGroups(message.payload.groups, legacyId, m2mToken)
+  logger.info(`Associate challenge terms for challenge ${legacyId}`)
+  await associateChallengeTerms(message.payload.terms, legacyId, createdByUserId, updatedByUserId)
+  logger.info(`set copilot for challenge ${legacyId}`)
+  await setCopilotPayment(challengeUuid, legacyId, _.get(message, 'payload.prizeSets'), createdByUserId, updatedByUserId, m2mToken)
+
+  try {
+    logger.info(`force V4 ES Feeder for the legacy challenge ${legacyId}`)
+    await helper.forceV4ESFeeder(legacyId)
+  } catch (e) {
+    logger.warn(`Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
+  }
+
+  let challenge
+  try {
+    challenge = await getChallengeById(m2mToken, legacyId)
+  } catch (e) {
+    throw new Error(`Error getting challenge by id - Error: ${JSON.stringify(e)}`)
   }
 
   if (message.payload.status && challenge) {
+    // Whether we need to sync v4 ES again
+    let needSyncV4ES = false
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
     if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
       logger.info('Activating challenge...')
@@ -712,6 +710,7 @@ async function processMessage (message) {
       await metadataService.createOrUpdateMetadata(legacyId, 9, 'On', createdByUserId) // autopilot
       // Repost all challenge resource on Kafka so they will get created on legacy by the legacy-challenge-resource-processor
       await rePostResourcesOnKafka(challengeUuid, m2mToken)
+      needSyncV4ES = true
     }
     if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
       if (message.payload.task.isTask) {
@@ -722,6 +721,7 @@ async function processMessage (message) {
         const winnerId = _.find(message.payload.winners, winner => winner.placement === 1).userId
         logger.info(`Will close the challenge with ID ${legacyId}. Winner ${winnerId}!`)
         await closeChallenge(legacyId, winnerId)
+        needSyncV4ES = true
       } else {
         logger.info('Challenge type is not a task.. Skip closing challenge...')
       }
@@ -730,15 +730,18 @@ async function processMessage (message) {
     if (!_.get(message.payload, 'task.isTask')) {
       const numOfReviewers = 2
       await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers)
+      needSyncV4ES = true
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
     }
-  }
-
-  try {
-    await helper.forceV4ESFeeder(legacyId)
-  } catch (e) {
-    logger.warn(`Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
+    if (needSyncV4ES) {
+      try {
+        logger.info(`Resync V4 ES for the legacy challenge ${legacyId}`)
+        await helper.forceV4ESFeeder(legacyId)
+      } catch (e) {
+        logger.warn(`Resync V4 - Failed to call V4 ES Feeder ${JSON.stringify(e)}`)
+      }
+    }
   }
 }
 
