@@ -656,7 +656,6 @@ async function processMessage (message) {
     if (_.get(message, 'payload.legacy.selfService')) {
       await disableTimelineNotifications(legacyId, createdByUserId) // disable
     }
-
   }
 
   logger.debug('Result from parsePayload:')
