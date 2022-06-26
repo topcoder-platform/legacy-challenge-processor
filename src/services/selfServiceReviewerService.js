@@ -6,10 +6,10 @@ const util = require('util')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
 
-const QUERY_GET_ENTRY = 'SELECT parameter FROM phase_criteria WHERE project_phase_id = %d'
+const QUERY_GET_ENTRY = 'SELECT parameter FROM phase_criteria WHERE project_phase_id = %d AND phase_criteria_type_id = 6'
 const QUERY_CREATE = 'INSERT INTO phase_criteria (project_phase_id, phase_criteria_type_id, parameter, create_user, create_date, modify_user, modify_date) VALUES (?, 6, ?, ?, CURRENT, ?, CURRENT)'
-const QUERY_UPDATE = 'UPDATE phase_criteria SET parameter = ?, modify_user = ?, modify_date = CURRENT WHERE project_phase_id = ?'
-const QUERY_DELETE = 'DELETE FROM phase_criteria WHERE project_phase_id = ?'
+const QUERY_UPDATE = 'UPDATE phase_criteria SET parameter = ?, modify_user = ?, modify_date = CURRENT WHERE project_phase_id = ? AND phase_criteria_type_id = 6'
+const QUERY_DELETE = 'DELETE FROM phase_criteria WHERE project_phase_id = ? AND phase_criteria_type_id = 6'
 
 /**
  * Prepare Informix statement
@@ -43,10 +43,9 @@ async function getEntry (phaseId) {
 }
 
 /**
- * Enable timeline notifications
+ * Merge number of reviewers
  * @param {Number} phaseId the legacy challenge ID
- * @param {Number} typeId the type ID
- * @param {Any} value the value
+ * @param {Number=} value the value
  * @param {String} createdBy the created by
  */
 async function createOrSetNumberOfReviewers (phaseId, value, createdBy) {
@@ -67,7 +66,7 @@ async function createOrSetNumberOfReviewers (phaseId, value, createdBy) {
       }
     } else {
       const query = await prepare(connection, QUERY_CREATE)
-      logger.info(`Will delete with values: ${phaseId}, ${value}, ${createdBy}, ${createdBy}`)
+      logger.info(`Will create with values: ${phaseId}, ${value}, ${createdBy}, ${createdBy}`)
       result = await query.executeAsync([phaseId, value, createdBy, createdBy])
     }
     await connection.commitTransactionAsync()
