@@ -785,7 +785,7 @@ processMessage.schema = {
       prizeSets: Joi.array().items(Joi.object().keys({
         type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
         prizes: Joi.array().items(Joi.object().keys({
-          value: Joi.number().positive().required()
+          value: Joi.number().min(0).required()
         }).unknown(true))
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
