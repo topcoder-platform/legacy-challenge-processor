@@ -342,7 +342,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
     `typeId=${typeId}`
   ]
   _.each((tags || []), (tag) => {
-    query.push(`tags[]=${tag}`)
+    query.push(`tags[]=${encodeURIComponent(tag)}`)
   })
   try {
     const res = await helper.getRequest(`${config.V5_CHALLENGE_MIGRATION_API_URL}/convert-to-v4?${query.join('&')}`, m2mToken)
