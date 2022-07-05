@@ -18,6 +18,7 @@ const metadataService = require('./metadataService')
 const paymentService = require('./paymentService')
 const { createOrSetNumberOfReviewers } = require('./selfServiceReviewerService')
 const { disableTimelineNotifications } = require('./selfServiceNotificationService')
+const legacyChallengeService = require('./legacyChallengeService')
 
 /**
  * Drop and recreate phases in ifx
@@ -341,7 +342,7 @@ async function getLegacyTrackInformation (trackId, typeId, tags, m2mToken) {
     `typeId=${typeId}`
   ]
   _.each((tags || []), (tag) => {
-    query.push(`tags[]=${tag}`)
+    query.push(`tags[]=${encodeURIComponent(tag)}`)
   })
   try {
     const res = await helper.getRequest(`${config.V5_CHALLENGE_MIGRATION_API_URL}/convert-to-v4?${query.join('&')}`, m2mToken)
@@ -656,7 +657,6 @@ async function processMessage (message) {
     if (_.get(message, 'payload.legacy.selfService')) {
       await disableTimelineNotifications(legacyId, createdByUserId) // disable
     }
-
   }
 
   logger.debug('Result from parsePayload:')
@@ -733,6 +733,11 @@ async function processMessage (message) {
       needSyncV4ES = true
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
+    }
+    if (message.payload.status === constants.challengeStatuses.CancelledClientRequest && challenge.currentStatus !== constants.challengeStatuses.CancelledClientRequest) {
+      logger.info('Cancelling challenge...')
+      await legacyChallengeService.cancelChallenge(legacyId, updatedByUserId)
+      needSyncV4ES = true
     }
     if (needSyncV4ES) {
       try {
