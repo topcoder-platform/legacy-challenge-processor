@@ -70,6 +70,7 @@ workflows:
             branches:
               only:
                 - develop
+                - PLAT-1430
 
       # Production builds are exectuted only on tagged commits to the
       # master branch.
