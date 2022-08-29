@@ -16,31 +16,7 @@ const QUERY_GET_ITERATIVE_REVIEW_RESOURCE_FOR_CHALLENGE = `SELECT limit 1 resour
 
 const QUERY_CREATE_REVIEW = 'INSERT INTO review (review_id, resource_id, submission_id, project_phase_id, scorecard_id, committed, score, initial_score, create_user, create_date, modify_user, modify_date) values (?,?,?,?,?,?,?,?,?,CURRENT,?,CURRENT)'
 
-/**
-review_id is a new ID using idGenerator
-resource_id, as near as I can tell, should be the universal Id of the resource, not the challenge or project specific IDs used for roles and resources.
-submission_id, the most important item, which you should have.
-project_phase_id, try null, or any phase that overlaps in time with the challenge phase the reviews are submitted for. I can't find any logic or constraints for this field.
-scorecard_id, the second most important item, which you should have.
-committed, in the case of a TopGear batch review submission should be true.
-score and initial_score are usually aggregated by OR and AP, but you could aggregate them yourself, according to the scorecard weights. Try having AP do it for you.
-create_user should be some generic API user name that tells us it was a TopGear batch upload.
-create_date should be now (use CURRENT for Informix SQL if you want).
-modify_user and modify_date can be null (or just don't include those in the field list).
-The ? are just placeholders for your values. I believe Informix uses a single quote for strings.
- */
-
 const QUERY_CREATE_REVIEW_ITEM = 'INSERT INTO review_item (review_item_id, review_id, scorecard_question_id, upload_id, answer, sort, create_user, create_date, modify_user, modify_date) values (?,?,?,?,?,?,?,CURRENT,?,CURRENT)'
-
-/*
-review_item_id, use your idGenerator ID.
-review_id, the review ID from the previous query.
-scorecard_question_id, the most important field, which you should have.
-upload_id, this is specific to the submission_id, although you could have multiple uploads and you will want the upload_id, which TopGear should have if someone answered a question about a submission, because the submission must have been downloaded from somewhere.
-answer, usually a number.
-sort, use a constant here if you wish. From what I can tell, this would be used to display certain comments at the top for review appeals. It may have a default sort from the scorecard definition, but it's probably not important since people won't be looking at individual reviews much, I'm guessing.
-Same as above for create_user, etc.
-*/
 
 const QUERY_GET_SUBMISSION = 'SELECT FIRST 1 * FROM submission s INNER JOIN upload u on s.upload_id = u.upload_id WHERE u.project_id = %d AND upload_status_id = 1 AND submission_status_id = 1 ORDER BY u.CREATE_DATE ASC'
 
