@@ -699,6 +699,28 @@ async function processMessage (message) {
     throw new Error(`Error getting challenge by id - Error: ${JSON.stringify(e)}`)
   }
 
+  // If iterative review is open
+  if (_.find(_.get(message.payload, 'phases'), p => p.isOpen && p.name === 'Iterative Review')) {
+    // Try to read reviews and insert them into informix DB
+    if (message.payload.metadata && message.payload.legacy.reviewScorecardId) {
+      let orReviewFeedback = _.find(message.payload.metadata, meta => meta.name === 'or_review_feedback')
+      let orReviewScore = _.find(message.payload.metadata, meta => meta.name === 'or_review_score')
+      if (!_.isUndefined(orReviewFeedback) && !_.isUndefined(orReviewScore)) {
+        orReviewFeedback = JSON.parse(orReviewFeedback)
+        const reviewResponses = []
+        _.each(orReviewFeedback, (value, key) => {
+          const questionId = _.get(_.find(constants.scorecardQuestionMapping[message.payload.legacy.reviewScorecardId], item => _.toString(item.questionId) === _.toString(key) || _.toLower(item.description) === _.toLower(key)), 'questionId')
+          reviewResponses.push({
+            questionId,
+            answer: value
+          })
+        })
+        orReviewScore = _.toNumber(orReviewFeedback)
+        await legacyChallengeReviewService.insertReview(legacyId, message.payload.legacy.reviewScorecardId, orReviewScore, reviewResponses, createdByUserId)
+      }
+    }
+  }
+
   if (message.payload.status && challenge) {
     // Whether we need to sync v4 ES again
     let needSyncV4ES = false
@@ -714,24 +736,6 @@ async function processMessage (message) {
       needSyncV4ES = true
     }
     if (message.payload.status === constants.challengeStatuses.Completed && challenge.currentStatus !== constants.challengeStatuses.Completed) {
-      // Try to read reviews and insert them into informix DB
-      if (message.payload.metadata && message.payload.legacy.reviewScorecardId) {
-        let orReviewFeedback = _.find(message.payload.metadata, meta => meta.name === 'or_review_feedback')
-        let orReviewScore = _.find(message.payload.metadata, meta => meta.name === 'or_review_score')
-        if (!_.isUndefined(orReviewFeedback) && !_.isUndefined(orReviewScore)) {
-          orReviewFeedback = JSON.parse(orReviewFeedback)
-          const reviewResponses = []
-          _.each(orReviewFeedback, (value, key) => {
-            const questionId = _.get(_.find(constants.scorecardQuestionMapping[message.payload.legacy.reviewScorecardId], item => _.toString(item.questionId) === _.toString(key) || _.toLower(item.description) === _.toLower(key)), 'questionId')
-            reviewResponses.push({
-              questionId,
-              answer: value
-            })
-          })
-          orReviewScore = _.toNumber(orReviewFeedback)
-          await legacyChallengeReviewService.insertReview(legacyId, message.payload.legacy.reviewScorecardId, orReviewScore, reviewResponses, createdByUserId)
-        }
-      }
       if (message.payload.task.isTask) {
         logger.info('Challenge is a TASK')
         if (!message.payload.winners || message.payload.winners.length === 0) {
