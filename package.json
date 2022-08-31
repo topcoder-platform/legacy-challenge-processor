@@ -33,7 +33,7 @@
     "http-json-response": "^1.0.1",
     "ifxnjs": "^10.0.5",
     "lodash": "^4.17.19",
-    "moment-timezone": "^0.5.32",
+    "moment-timezone": "^0.5.35",
     "no-kafka": "^3.4.3",
     "q": "^1.5.1",
     "showdown": "^1.9.1",
