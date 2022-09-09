@@ -71,6 +71,12 @@ const PhaseStatusTypes = {
   Closed: 3
 }
 
+const CheckpointPhaseTypes = {
+  Submission: 'Checkpoint Submission',
+  Screening: 'Checkpoint Screening',
+  Review: 'Checkpoint Review',
+}
+
 const prizeTypesIds = {
   Contest: 15,
   Checkpoint: 14
@@ -166,6 +172,7 @@ module.exports = {
   createChallengeStatusesMap,
   challengeStatuses,
   PhaseStatusTypes,
+  CheckpointPhaseTypes,
   prizeTypesIds,
   supportedMetadata,
   scorecardQuestionMapping
