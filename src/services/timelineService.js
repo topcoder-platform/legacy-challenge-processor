@@ -9,7 +9,7 @@ const momentTZ = require('moment-timezone')
 const IDGenerator = require('../common/idGenerator')
 const helper = require('../common/helper')
 
-const phaseIdGen = new IDGenerator('prize_id_seq')
+const phaseIdGen = new IDGenerator('project_phase_id_seq')
 
 const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
 

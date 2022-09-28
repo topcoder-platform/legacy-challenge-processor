@@ -661,11 +661,6 @@ async function processMessage (message) {
     if (_.get(message, 'payload.legacy.selfService')) {
       await disableTimelineNotifications(legacyId, createdByUserId) // disable
     }
-  } else {
-    const v5PhaseType = _.find(message.payload.phases, p => p.name === constants.CheckpointPhaseTypes.Submission)
-    if (v5PhaseType) {
-      await recreatePhases(legacyId, message.payload.phases, updatedByUserId)
-    }
   }
 
   logger.debug('Result from parsePayload:')
