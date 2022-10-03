@@ -29,6 +29,9 @@ const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On
 
 const QUERY_INSERT_CHALLENGE_PHASE_DEPENDENCY = 'INSERT INTO phase_dependency (dependency_phase_id, dependent_phase_id, dependency_start, dependent_start, lag_time, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, 1, 0, ?, CURRENT, ?, CURRENT)'
 const QUERY_GET_PROJECT_PHASE_ID = 'SELECT project_phase_id as project_phase_id FROM project_phase WHERE project_id = %d AND phase_type_id = %d'
+
+const QUERY_INSERT_CHALLENGE_PHASE_SCORECARD_ID = 'INSERT INTO phase_criteria (project_phase_id, phase_criteria_type_id, parameter, create_user, create_date, modify_user, modify_date) VALUES (?, 1, ?, ?, CURRENT, ?, CURRENT)'
+
 /**
  * Formats a date into a format supported by ifx
  * @param {String} dateStr the date in string format
@@ -84,6 +87,25 @@ async function insertPhaseDependency(dependencyPhaseId, dependentPhaseId, depend
   }
   return result
 }
+
+
+async function insertScorecardId(projectPhaseId, scorecardId, createdBy){
+
+  logger.info(`Creating scorecard ID ${projectPhaseId} use scorecard ${scorecardId}`)
+  const connection = await helper.getInformixConnection()
+  let result = null
+  try {
+    let query = await prepare(connection, QUERY_INSERT_CHALLENGE_PHASE_SCORECARD_ID)
+    result = await query.executeAsync([projectPhaseId, scorecardId, createdBy, createdBy])
+  } catch (e) {
+    logger.error(`Error in 'insertScorecardId' ${e}`)
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+  return result
+}
+
 /**
  * Gets phase for the given phase type for the given challenge ID
  */

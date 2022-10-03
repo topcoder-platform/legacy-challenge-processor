@@ -66,6 +66,15 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
         await timelineService.insertPhaseDependency(registrationPhaseId, checkpointSubmissionPhaseId, 1, createdBy)
         await timelineService.insertPhaseDependency(checkpointSubmissionPhaseId, checkpointScreeningPhaseId, 0, createdBy)
         await timelineService.insertPhaseDependency(checkpointScreeningPhaseId, checkpointReviewPhaseId, 0, createdBy)
+
+        logger.info(`Creating default scorecard records for checkpoint phases`)
+        //30001364 is the default checkpoint screening scorecard for studio (https://software.topcoder-dev.com/review/actions/ViewScorecard?scid=30001364)
+        await timelineService.insertScorecardId(checkpointScreeningPhaseId, 30001364, createdBy)
+
+        //30001364 is the default checkpoint review scorecard for studio (https://software.topcoder-dev.com/review/actions/ViewScorecard?scid=30001004)
+        await timelineService.insertScorecardId(checkpointReviewPhaseId, 30001004, createdBy)
+
+         
       }
     } else if (!phaseLegacyId) {
       logger.warn(`Could not create phase ${phase.name} on legacy!`)
