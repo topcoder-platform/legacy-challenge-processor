@@ -98,7 +98,7 @@ async function getProjectPhaseId(challengeLegacyId, phaseTypeId) {
   } finally {
     await connection.closeAsync()
   }
-  return result
+  return _.get(result, '[0].project_phase_id', null)
 }
 /**
  * Drop challenge phase
