@@ -25,6 +25,8 @@ const QUERY_GET_TIMELINE_NOTIFICATION_SETTINGS = 'SELECT value FROM project_info
 const QUERY_CREATE_TIMELINE_NOTIFICATIONS = 'INSERT INTO project_info (project_id, project_info_type_id, value, create_user, create_date, modify_user, modify_date) VALUES (?, "11", "On", ?, CURRENT, ?, CURRENT)'
 const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On", modify_user = ?, modify_date = CURRENT WHERE project_info_type_id = "11" AND project_id = ?'
 
+const QUERY_INSERT_CHALLENGE_PHASE_DEPENDENCY = 'INSERT INTO phase_dependency (dependency_phase_id, dependent_phase_id, dependency_start, dependent_start, lag_time, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, 1, 0, ?, CURRENT, ?, CURRENT)'
+const QUERY_GET_PROJECT_PHASE_ID = 'SELECT project_phase_id FROM project_phase WHERE project_id = ? AND phase_type_id = ?'
 /**
  * Formats a date into a format supported by ifx
  * @param {String} dateStr the date in string format
@@ -64,6 +66,38 @@ async function getPhaseTypes () {
   return result
 }
 
+async function insertPhaseDependency(dependencyPhaseId, dependentPhaseId, dependencyStart, createdBy){
+  const connection = await helper.getInformixConnection()
+  let result = null
+  try {
+    let query = await prepare(connection, QUERY_INSERT_CHALLENGE_PHASE_DEPENDENCY)
+    result = await query.executeAsync([dependencyPhaseId, dependentPhaseId, dependencyStart, createdBy, createdBy])
+  } catch (e) {
+    logger.error(`Error in 'insertPhaseDependency' ${e}`)
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+  return result
+}
+/**
+ * Gets phase for the given phase type for the given challenge ID
+ */
+async function getProjectPhaseId(challengeLegacyId, phaseTypeId) {
+  const connection = await helper.getInformixConnection()
+  let result = null
+  try {
+    await connection.beginTransactionAsync()
+    let query = await prepare(connection, QUERY_GET_PROJECT_PHASE_ID)
+    result = await query.executeAsync([challengeLegacyId, phaseTypeId])
+  } catch (e) {
+    logger.error(`Error in 'getProjectPhaseId' ${e}`)
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+  return result
+}
 /**
  * Drop challenge phase
  * @param {Number} challengeLegacyId the legacy challenge ID
@@ -150,6 +184,19 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
       createdBy
     ])
     await connection.commitTransactionAsync()
+
+    //Handle checkpoint phases
+    //Magic numbers: 15=checkpoint submission, 16=checkpoint screen, 17=checkpoint review, 1=registration
+    //For dependencyStart: 1=start, 0=end
+    if(phaseTypeId==17){
+      registrationPhaseId = await this.getProjectPhaseId(challengeLegacyId, 1)
+      checkpointSubmissionPhaseId = await this.getProjectPhaseId(challengeLegacyId, 15)
+      checkpointScreeningPhaseId = await this.getProjectPhaseId(challengeLegacyId, 16)
+      checkpointReviewPhaseId = await this.getProjectPhaseId(challengeLegacyId, 17)
+      await this.insertPhaseDependency(registrationPhaseId, checkpointSubmissionPhaseId, 1, createdBy)
+      await this.insertPhaseDependency(checkpointSubmissionPhaseId, checkpointScreeningPhaseId, 0, createdBy)
+      await this.insertPhaseDependency(checkpointScreeningPhaseId, checkpointReviewPhaseId, 0, createdBy)
+    }
   } catch (e) {
     logger.error(`Error in 'createPhase' ${e}, rolling back transaction`)
     await connection.rollbackTransactionAsync()
