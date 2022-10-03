@@ -58,10 +58,10 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
       if(phaseLegacyId==17){
         logger.info(`Creating phase dependencies for checkpoint phases`)
 
-        registrationPhaseId = await timelineService.getProjectPhaseId(legacyId, 1)
-        checkpointSubmissionPhaseId = await timelineService.getProjectPhaseId(legacyId, 15)
-        checkpointScreeningPhaseId = await timelineService.getProjectPhaseId(legacyId, 16)
-        checkpointReviewPhaseId = await timelineService.getProjectPhaseId(legacyId, 17)
+        const registrationPhaseId = await timelineService.getProjectPhaseId(legacyId, 1)
+        const checkpointSubmissionPhaseId = await timelineService.getProjectPhaseId(legacyId, 15)
+        const checkpointScreeningPhaseId = await timelineService.getProjectPhaseId(legacyId, 16)
+        const checkpointReviewPhaseId = await timelineService.getProjectPhaseId(legacyId, 17)
 
         await timelineService.insertPhaseDependency(registrationPhaseId, checkpointSubmissionPhaseId, 1, createdBy)
         await timelineService.insertPhaseDependency(checkpointSubmissionPhaseId, checkpointScreeningPhaseId, 0, createdBy)
