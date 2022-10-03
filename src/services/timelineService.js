@@ -309,5 +309,6 @@ module.exports = {
   createPhase,
   dropPhase,
   insertPhaseDependency,
-  getProjectPhaseId
+  getProjectPhaseId,
+  insertScorecardId
 }
