@@ -67,6 +67,8 @@ async function getPhaseTypes () {
 }
 
 async function insertPhaseDependency(dependencyPhaseId, dependentPhaseId, dependencyStart, createdBy){
+
+  logger.info(`Creating phase dependency ${dependencyPhaseId} to ${dependentPhaseId} at ${dependencyStart}`)
   const connection = await helper.getInformixConnection()
   let result = null
   try {
@@ -185,18 +187,6 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
     ])
     await connection.commitTransactionAsync()
 
-    //Handle checkpoint phases
-    //Magic numbers: 15=checkpoint submission, 16=checkpoint screen, 17=checkpoint review, 1=registration
-    //For dependencyStart: 1=start, 0=end
-    if(phaseTypeId==17){
-      registrationPhaseId = await this.getProjectPhaseId(challengeLegacyId, 1)
-      checkpointSubmissionPhaseId = await this.getProjectPhaseId(challengeLegacyId, 15)
-      checkpointScreeningPhaseId = await this.getProjectPhaseId(challengeLegacyId, 16)
-      checkpointReviewPhaseId = await this.getProjectPhaseId(challengeLegacyId, 17)
-      await this.insertPhaseDependency(registrationPhaseId, checkpointSubmissionPhaseId, 1, createdBy)
-      await this.insertPhaseDependency(checkpointSubmissionPhaseId, checkpointScreeningPhaseId, 0, createdBy)
-      await this.insertPhaseDependency(checkpointScreeningPhaseId, checkpointReviewPhaseId, 0, createdBy)
-    }
   } catch (e) {
     logger.error(`Error in 'createPhase' ${e}, rolling back transaction`)
     await connection.rollbackTransactionAsync()
@@ -291,5 +281,7 @@ module.exports = {
   updatePhase,
   enableTimelineNotifications,
   createPhase,
-  dropPhase
+  dropPhase,
+  insertPhaseDependency,
+  getProjectPhaseId
 }
