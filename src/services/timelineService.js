@@ -2,6 +2,8 @@
  * Timeline Service
  * Interacts with InformixDB
  */
+const _ = require('lodash')
+
 const logger = require('../common/logger')
 const util = require('util')
 const config = require('config')
