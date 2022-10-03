@@ -101,7 +101,9 @@ async function getProjectPhaseId(challengeLegacyId, phaseTypeId) {
   } finally {
     await connection.closeAsync()
   }
-  return _.get(result, '[0].project_phase_id', null)
+  const project_phase_id = _.get(result, '[0].project_phase_id', null)
+  logger.info(`Project phase ID: ${project_phase_id}`)
+  return project_phase_id
 }
 /**
  * Drop challenge phase
