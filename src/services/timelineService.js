@@ -28,7 +28,7 @@ const QUERY_CREATE_TIMELINE_NOTIFICATIONS = 'INSERT INTO project_info (project_i
 const QUERY_UPDATE_TIMELINE_NOTIFICATIONS = 'UPDATE project_info SET value = "On", modify_user = ?, modify_date = CURRENT WHERE project_info_type_id = "11" AND project_id = ?'
 
 const QUERY_INSERT_CHALLENGE_PHASE_DEPENDENCY = 'INSERT INTO phase_dependency (dependency_phase_id, dependent_phase_id, dependency_start, dependent_start, lag_time, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, 1, 0, ?, CURRENT, ?, CURRENT)'
-const QUERY_GET_PROJECT_PHASE_ID = 'SELECT project_phase_id FROM project_phase WHERE project_id = %d AND phase_type_id = %d'
+const QUERY_GET_PROJECT_PHASE_ID = 'SELECT project_phase_id as project_phase_id FROM project_phase WHERE project_id = %d AND phase_type_id = %d'
 /**
  * Formats a date into a format supported by ifx
  * @param {String} dateStr the date in string format
@@ -101,7 +101,7 @@ async function getProjectPhaseId(challengeLegacyId, phaseTypeId) {
     await connection.closeAsync()
   }
   logger.info(`Query result: ${result}`)
-  const project_phase_id = _.get(result, '[0]', null)
+  const project_phase_id = _.get(result, '[0].project_phase_id', null)
   logger.info(`Project phase ID: ${project_phase_id}`)
   return project_phase_id
 }
