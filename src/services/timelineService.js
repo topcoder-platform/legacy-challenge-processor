@@ -88,6 +88,7 @@ async function insertPhaseDependency(dependencyPhaseId, dependentPhaseId, depend
  * Gets phase for the given phase type for the given challenge ID
  */
 async function getProjectPhaseId(challengeLegacyId, phaseTypeId) {
+  logger.info(`Getting project phase ID type ${phaseTypeId} for challenge ${challengeLegacyId}`)
   const connection = await helper.getInformixConnection()
   let result = null
   try {
