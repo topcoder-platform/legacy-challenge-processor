@@ -84,19 +84,15 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
-      // Compare duration and status
-      // if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
-      // ||
-      // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-      // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-      // const newStatus = v5Equivalent.isOpen
-      //   ? constants.PhaseStatusTypes.Open
-      //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-      // update phase
       logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-      const newStatus = v5Equivalent.isOpen
-        ? constants.PhaseStatusTypes.Open
-        : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      
+      let newStatus = v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : constants.PhaseStatusTypes.Scheduled;
+      if (new Date().getTime() > new Date(v5Equivalent.scheduledEndDate).getTime()) {
+        newStatus = constants.PhaseStatusTypes.Closed;
+      }
+      
+      console.log('New Status: ' + newStatus);
+      
       await timelineService.updatePhase(
         phase.project_phase_id,
         legacyId,
