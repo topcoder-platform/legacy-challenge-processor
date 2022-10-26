@@ -11,6 +11,8 @@ const logger = require('./common/logger')
 const helper = require('./common/helper')
 const ProcessorService = require('./services/ProcessorService')
 
+const AWSXRay = require('aws-xray-sdk')
+
 // Start kafka consumer
 logger.info('Starting kafka consumer')
 // create consumer
@@ -54,37 +56,63 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
     return
   }
 
-  // do not trust the message payload
-  // the message.payload will be replaced with the data from the API
-  try {
-    const challengeUuid = _.get(messageJSON, 'payload.id')
-    if (_.isEmpty(challengeUuid)) {
-      throw new Error('Invalid payload')
-    }
-    const m2mToken = await helper.getM2MToken()
-    const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
-    // TODO : Cleanup. Pulling the billingAccountId from the payload, it's not part of the challenge object
-    messageJSON.payload = { billingAccountId: messageJSON.payload.billingAccountId, ...v5Challenge.body }
-  } catch (err) {
-    logger.debug('Failed to fetch challenge information')
-    logger.logFullError(err)
-  }
+  const ns = AWSXRay.getNamespace();
+  ns.run(async () => {
 
-  try {
-    if (topic === config.CREATE_CHALLENGE_TOPIC) {
-      await ProcessorService.processMessage(messageJSON)
-    } else {
-      await ProcessorService.processMessage(messageJSON)
+    const { traceInformation: {
+      traceId,
+      parentSegmentId,
+    } = {
+      traceId: null,
+      parentSegmentId: null
+    } } = messageJSON;
+
+    console.log('tracing information', traceId, parentSegmentId);
+
+    const segment = new AWSXRay.Segment('legacy-challenge-processor');
+
+    if (traceId) {
+      segment.trace_id = traceId;
+      segment.id = parentSegmentId;
     }
 
-    // logger.debug('Successfully processed message')
-  } catch (err) {
-    logger.error(`Error processing message ${JSON.stringify(messageJSON)}`)
-    logger.logFullError(err)
-  } finally {
-    // Commit offset regardless of error
-    await consumer.commitOffset({ topic, partition, offset: m.offset })
-  }
+    AWSXRay.setSegment(segment);
+
+    // do not trust the message payload
+    // the message.payload will be replaced with the data from the API
+    try {
+      const challengeUuid = _.get(messageJSON, 'payload.id')
+      if (_.isEmpty(challengeUuid)) {
+        segment.close();
+        segment.addError(new Error(err));
+        throw new Error('Invalid payload')
+      }
+      const m2mToken = await helper.getM2MToken()
+      const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
+      // TODO : Cleanup. Pulling the billingAccountId from the payload, it's not part of the challenge object
+      messageJSON.payload = { billingAccountId: messageJSON.payload.billingAccountId, ...v5Challenge.body }
+    } catch (err) {
+      segment.addError(new Error(err));
+      logger.debug('Failed to fetch challenge information')
+      logger.logFullError(err)
+    }
+
+    try {
+      await ProcessorService.processMessage(messageJSON)
+
+      // logger.debug('Successfully processed message')
+    } catch (err) {
+      segment.addError(new Error(err));
+      logger.error(`Error processing message ${JSON.stringify(messageJSON)}`)
+      logger.logFullError(err)
+    } finally {
+      // Commit offset regardless of error
+      await consumer.commitOffset({ topic, partition, offset: m.offset })
+    }
+
+    segment.close();
+  })
+
 })
 
 // check if there is kafka connection alive

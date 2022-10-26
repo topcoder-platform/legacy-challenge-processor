@@ -756,6 +756,10 @@ processMessage.schema = {
     timestamp: Joi.date().required(),
     'mime-type': Joi.string().required(),
     key: Joi.string().allow(null),
+    traceInformation: Joi.object().keys({
+      traceId: Joi.string().required(),
+      parentSegmentId: Joi.string().required(),
+    }).optional(),
     payload: Joi.object().keys({
       legacyId: Joi.number().integer().positive(),
       legacy: Joi.object().keys({
@@ -800,4 +804,4 @@ module.exports = {
   processMessage
 }
 
-// logger.buildService(module.exports)
+logger.buildService(module.exports)
