@@ -87,7 +87,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
       logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
       
       let newStatus = v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : constants.PhaseStatusTypes.Scheduled;
-      if (new Date().getTime() > new Date(v5Equivalent.scheduledEndDate).getTime()) {
+      if (v5Equivalent.scheduledEndDate != null && v5Equivalent.scheduledEndDate.trim().length > 0 && new Date().getTime() > new Date(v5Equivalent.scheduledEndDate).getTime()) {
         newStatus = constants.PhaseStatusTypes.Closed;
       }
       
