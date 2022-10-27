@@ -106,3 +106,9 @@ module.exports = {
   addTermsToChallenge,
   removeTermsFromChallenge
 }
+
+logger.buildService(module.exports, {
+  validators: { enabled: true },
+  logging: { enabled: true },
+  tracing: { enabled: true, annotations: [], metadata: [] }
+})

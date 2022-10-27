@@ -252,3 +252,9 @@ module.exports = {
   createPhase,
   dropPhase
 }
+
+logger.buildService(module.exports, {
+  validators: { enabled: true },
+  logging: { enabled: true },
+  tracing: { enabled: true, annotations: [], metadata: [] }
+})

@@ -87,3 +87,9 @@ module.exports = {
   getMetadataEntry,
   createOrUpdateMetadata
 }
+
+logger.buildService(module.exports, {
+  validators: { enabled: true },
+  logging: { enabled: true },
+  tracing: { enabled: true, annotations: [], metadata: [] }
+})
