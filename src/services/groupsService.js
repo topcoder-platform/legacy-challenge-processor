@@ -179,3 +179,9 @@ module.exports = {
   addGroupToChallenge,
   removeGroupFromChallenge
 }
+
+logger.buildService(module.exports, {
+  validators: { enabled: true },
+  logging: { enabled: true },
+  tracing: { enabled: true, annotations: [], metadata: [] }
+})

@@ -132,3 +132,9 @@ module.exports = {
   createPrize,
   deletePrize
 }
+
+logger.buildService(module.exports, {
+  validators: { enabled: true },
+  logging: { enabled: true },
+  tracing: { enabled: true, annotations: [], metadata: [] }
+})

@@ -70,3 +70,9 @@ module.exports = {
   getEntry,
   disableTimelineNotifications
 }
+
+logger.buildService(module.exports, {
+  validators: { enabled: true },
+  logging: { enabled: true },
+  tracing: { enabled: true, annotations: [], metadata: [] }
+})

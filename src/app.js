@@ -26,8 +26,8 @@ const consumer = new Kafka.GroupConsumer(helper.getKafkaOptions())
  */
 const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, async (m) => {
   const message = m.message.value.toString('utf8')
-  // logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${
-  //   m.offset}; Message: ${message}.`)
+  logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${m.offset}; Message: ${message}.`)
+
   let messageJSON
   try {
     messageJSON = JSON.parse(message)
