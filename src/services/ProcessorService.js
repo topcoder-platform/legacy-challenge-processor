@@ -79,24 +79,28 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
+
+  let isSubmissionPhaseOpen = false
+  let postMortemPhaseId = null
   for (const phase of phasesFromIFx) {
+    if (phase.phase_type_id === constants.PhaseTypes.POST_MORTEM) {
+      postMortemPhaseId = phase.project_phase_id
+    }
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
     if (v5Equivalent) {
-      // Compare duration and status
-      // if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
-      // ||
-      // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-      // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-      // const newStatus = v5Equivalent.isOpen
-      //   ? constants.PhaseStatusTypes.Open
-      //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-      // update phase
       logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-      const newStatus = v5Equivalent.isOpen
-        ? constants.PhaseStatusTypes.Open
-        : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      
+      let newStatus = v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : constants.PhaseStatusTypes.Scheduled;
+      if (v5Equivalent.scheduledEndDate != null && v5Equivalent.scheduledEndDate.trim().length > 0 && new Date().getTime() > new Date(v5Equivalent.scheduledEndDate).getTime()) {
+        newStatus = constants.PhaseStatusTypes.Closed;
+      }
+      
+      if (v5Equivalent.name === 'Submission' && newStatus === constants.PhaseStatusTypes.Open) {
+        isSubmissionPhaseOpen = true
+      }
+      
       await timelineService.updatePhase(
         phase.project_phase_id,
         legacyId,
@@ -105,16 +109,17 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
         v5Equivalent.duration * 1000,
         newStatus // phase.phase_status_id
       )
-      // newStatus)
-      // } else {
-      //   logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
-      // }
     } else {
       logger.info(`No v5 Equivalent Found for ${phaseName}`)
     }
     if (isSelfService && phaseName === 'Review') {
       // make sure to set the required reviewers to 2
       await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
+    }
+
+    if (isSubmissionPhaseOpen && postMortemPhaseId != null) {
+      logger.info('Submission Phase is open, Remove Post-Mortem Phase', legacyId, postMortemPhaseId)
+      await timelineService.dropPhase(legacyId, postMortemPhaseId)
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
