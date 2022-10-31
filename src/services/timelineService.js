@@ -20,6 +20,7 @@ const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_t
 
 const QUERY_DROP_CHALLENGE_PHASE_CRITERIA = 'DELETE FROM phase_criteria WHERE project_phase_id = ?'
 const QUERY_DROP_CHALLENGE_PHASE_AUDIT = "DELETE FROM project_phase_audit WHERE project_phase_id = ?"
+const QUERY_DROP_CHALLENGE_PHASE_RESOURCE = "DELETE FROM resource where project_phase_id = ?"
 
 const QUERY_GET_TIMELINE_NOTIFICATION_SETTINGS = 'SELECT value FROM project_info WHERE project_id = %d and project_info_type_id = %d'
 
@@ -79,6 +80,9 @@ async function dropPhase (challengeLegacyId, projectPhaseId) {
     await query.executeAsync([projectPhaseId])
 
     query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE_AUDIT)
+    await query.executeAsync([projectPhaseId])
+
+    query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE_RESOURCE)
     await query.executeAsync([projectPhaseId])
 
     query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE)
