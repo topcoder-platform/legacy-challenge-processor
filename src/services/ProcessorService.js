@@ -124,16 +124,18 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
     }
   }
 
-  if (isSubmissionPhaseOpen && postMortemPhaseId != null) {
-    logger.info('Submission Phase is open, Remove Post-Mortem Phase', legacyId, postMortemPhaseId)
-    // await timelineService.dropPhase(legacyId, postMortemPhaseId)
-    await timelineService.updatePhase(postMortemPhaseId, legacyId, new Date(), new Date(new Date().getTime() + 86400 * 1000), 86400, constants.PhaseStatusTypes.Scheduled)
-  }
+  // if (isSubmissionPhaseOpen && postMortemPhaseId != null) {
+  //   logger.info('Submission Phase is open, Remove Post-Mortem Phase', legacyId, postMortemPhaseId)
+  //   // await timelineService.dropPhase(legacyId, postMortemPhaseId)
+  //   await timelineService.updatePhase(postMortemPhaseId, legacyId, new Date(), new Date(new Date().getTime() + 86400 * 1000), 86400, constants.PhaseStatusTypes.Scheduled)
+  // }
 
   if (phasesToRemove.length > 0) {
     logger.info(`Removing ${phasesToRemove.length} phases from legacy`)
     for (const phase of phasesToRemove) {
-      await timelineService.dropPhase(legacyId, phase.project_phase_id)
+      try {
+        await timelineService.dropPhase(legacyId, phase.project_phase_id)
+      } catch (ignore) {}
     }
   }
   
