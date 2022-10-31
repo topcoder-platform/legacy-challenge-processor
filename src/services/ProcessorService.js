@@ -82,6 +82,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
 
   let isSubmissionPhaseOpen = false
   let postMortemPhaseId = null
+  
   for (const phase of phasesFromIFx) {
     if (phase.phase_type_id === constants.PhaseTypes.POST_MORTEM) {
       postMortemPhaseId = phase.project_phase_id
@@ -116,11 +117,11 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
       // make sure to set the required reviewers to 2
       await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
     }
+  }
 
-    if (isSubmissionPhaseOpen && postMortemPhaseId != null) {
-      logger.info('Submission Phase is open, Remove Post-Mortem Phase', legacyId, postMortemPhaseId)
-      await timelineService.dropPhase(legacyId, postMortemPhaseId)
-    }
+  if (isSubmissionPhaseOpen && postMortemPhaseId != null) {
+    logger.info('Submission Phase is open, Remove Post-Mortem Phase', legacyId, postMortemPhaseId)
+    await timelineService.dropPhase(legacyId, postMortemPhaseId)
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
   // TODO: handle timeline template updates

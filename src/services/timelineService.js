@@ -19,6 +19,7 @@ const QUERY_INSERT_CHALLENGE_PHASE = 'INSERT INTO project_phase (project_phase_i
 const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
 
 const QUERY_DROP_CHALLENGE_PHASE_CRITERIA = 'DELETE FROM phase_criteria WHERE project_phase_id = ?'
+const QUERY_DROP_CHALLENGE_PHASE_AUDIT = "DELETE FROM project_phase_audit WHERE project_phase_id = ?"
 
 const QUERY_GET_TIMELINE_NOTIFICATION_SETTINGS = 'SELECT value FROM project_info WHERE project_id = %d and project_info_type_id = %d'
 
@@ -75,7 +76,11 @@ async function dropPhase (challengeLegacyId, projectPhaseId) {
   try {
     await connection.beginTransactionAsync()
     let query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE_CRITERIA)
-    result = await query.executeAsync([projectPhaseId])
+    await query.executeAsync([projectPhaseId])
+
+    query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE_AUDIT)
+    await query.executeAsync([projectPhaseId])
+
     query = await prepare(connection, QUERY_DROP_CHALLENGE_PHASE)
     result = await query.executeAsync([challengeLegacyId, projectPhaseId])
     await connection.commitTransactionAsync()
