@@ -80,11 +80,6 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
 
-  let isSubmissionPhaseOpen = false
-  let postMortemPhaseId = null
-
-  let phasesToRemove = []
-
   for (const phase of phasesFromIFx) {
     if (phase.phase_type_id === constants.PhaseTypes.POST_MORTEM) {
       postMortemPhaseId = phase.project_phase_id
@@ -100,10 +95,6 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
         newStatus = constants.PhaseStatusTypes.Closed;
       }
       
-      if (v5Equivalent.name === 'Submission' && newStatus === constants.PhaseStatusTypes.Open) {
-        isSubmissionPhaseOpen = true
-      }
-      
       logger.info(`Phase ${phaseName} has new status ${newStatus}. Scheduled End Date: ${v5Equivalent.scheduledEndDate}, Current Date: ${new Date().getTime()}`)
       
       await timelineService.updatePhase(
@@ -112,12 +103,12 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
         v5Equivalent.scheduledStartDate,
         v5Equivalent.scheduledEndDate,
         v5Equivalent.duration * 1000,
-        newStatus // phase.phase_status_id
+        newStatus, // phase.phase_status_id
+        newStatus == constants.PhaseStatusTypes.Scheduled ? true : false,
+        newStatus == constants.PhaseStatusTypes.Scheduled || newStatus == constants.PhaseStatusTypes.Open ? true : false,
       )
-    } else {
-      logger.info(`No v5 Equivalent Found for ${phaseName}`)
-      phasesToRemove.push(phase)
     }
+
     if (isSelfService && phaseName === 'Review') {
       // make sure to set the required reviewers to 2
       await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
@@ -130,14 +121,14 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   //   await timelineService.updatePhase(postMortemPhaseId, legacyId, new Date(), new Date(new Date().getTime() + 86400 * 1000), 86400, constants.PhaseStatusTypes.Scheduled)
   // }
 
-  if (phasesToRemove.length > 0) {
-    logger.info(`Removing ${phasesToRemove.length} phases from legacy`)
-    for (const phase of phasesToRemove) {
-      try {
-        await timelineService.dropPhase(legacyId, phase.project_phase_id)
-      } catch (ignore) {}
-    }
-  }
+  // if (phasesToRemove.length > 0) {
+  //   logger.info(`Removing ${phasesToRemove.length} phases from legacy`)
+  //   for (const phase of phasesToRemove) {
+  //     try {
+  //       await timelineService.dropPhase(legacyId, phase.project_phase_id)
+  //     } catch (ignore) {}
+  //   }
+  // }
   
   // TODO: What about iterative reviews? There can be many for the same challenge.
   // TODO: handle timeline template updates

@@ -16,7 +16,7 @@ const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
 const QUERY_GET_CHALLENGE_PHASES = 'SELECT project_phase_id, scheduled_start_time, scheduled_end_time, duration, phase_status_id, phase_type_id FROM project_phase WHERE project_id = %d'
 const QUERY_DROP_CHALLENGE_PHASE = 'DELETE FROM project_phase WHERE project_id = ? AND project_phase_id = ?'
 const QUERY_INSERT_CHALLENGE_PHASE = 'INSERT INTO project_phase (project_phase_id, project_id, phase_type_id, phase_status_id, fixed_start_time, scheduled_start_time, scheduled_end_time, actual_start_time, actual_end_time, duration, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT, ?, CURRENT)'
-const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, actual_end_time = null, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
+const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
 
 const QUERY_DROP_CHALLENGE_PHASE_CRITERIA = 'DELETE FROM phase_criteria WHERE project_phase_id = ?'
 const QUERY_DROP_CHALLENGE_PHASE_AUDIT = "DELETE FROM project_phase_audit WHERE project_phase_id = ?"
@@ -189,12 +189,21 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
  * @param {Date} duration the duration
  * @param {Number} statusTypeId the status type ID
  */
-async function updatePhase (phaseId, challengeLegacyId, startTime, endTime, duration, statusTypeId) {
+async function updatePhase (phaseId, challengeLegacyId, startTime, endTime, duration, statusTypeId, resetActualStart, resetActualEnd) {
+  console.log('updatePhase', phaseId, challengeLegacyId, startTime, endTime, duration, statusTypeId, resetActualStart, resetActualEnd)
+
   const connection = await helper.getInformixConnection()
   let result = null
   try {
     // await connection.beginTransactionAsync()
-    const query = await prepare(connection, util.format(QUERY_UPDATE_CHALLENGE_PHASE, phaseId, challengeLegacyId))
+    let queryParts = QUERY_UPDATE_CHALLENGE_PHASE.split(',')
+    if (resetActualStart) {
+      queryParts.splice(1, 0, ' actual_start_time = null')
+    }
+    if (resetActualEnd) {
+      queryParts.splice(1, 0, ' actual_end_time = null')
+    }
+    const query = await prepare(connection, util.format(queryParts.join(','), phaseId, challengeLegacyId))
     result = await query.executeAsync([formatDate(startTime), formatDate(endTime), duration, statusTypeId])
     // await connection.commitTransactionAsync()
   } catch (e) {
