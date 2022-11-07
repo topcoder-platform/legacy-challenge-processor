@@ -96,7 +96,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
       logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
       const newStatus = v5Equivalent.isOpen
         ? constants.PhaseStatusTypes.Open
-        : _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Scheduled ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+        : (_.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Scheduled ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
       await timelineService.updatePhase(
         phase.project_phase_id,
         legacyId,
