@@ -15,10 +15,10 @@ const phaseIdGen = new IDGenerator('project_phase_id_seq')
 
 const QUERY_GET_PHASE_TYPES = 'SELECT phase_type_id, name FROM phase_type_lu'
 
-const QUERY_GET_CHALLENGE_PHASES = 'SELECT project_phase_id, scheduled_start_time, scheduled_end_time, duration, phase_status_id, phase_type_id FROM project_phase WHERE project_id = %d'
+const QUERY_GET_CHALLENGE_PHASES = 'SELECT project_phase_id, fixed_start_time, scheduled_start_time, scheduled_end_time, duration, phase_status_id, phase_type_id FROM project_phase WHERE project_id = %d'
 const QUERY_DROP_CHALLENGE_PHASE = 'DELETE FROM project_phase WHERE project_id = ? AND project_phase_id = ?'
 const QUERY_INSERT_CHALLENGE_PHASE = 'INSERT INTO project_phase (project_phase_id, project_id, phase_type_id, phase_status_id,  scheduled_start_time, scheduled_end_time, duration, create_user, create_date, modify_user, modify_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT, ?, CURRENT)'
-const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
+const QUERY_UPDATE_CHALLENGE_PHASE = 'UPDATE project_phase SET fixed_start_time = ?, scheduled_start_time = ?, scheduled_end_time = ?, duration = ?, phase_status_id = ? WHERE project_phase_id = %d and project_id = %d'
 
 const QUERY_DROP_CHALLENGE_PHASE_CRITERIA = 'DELETE FROM phase_criteria WHERE project_phase_id = ?'
 
@@ -37,6 +37,9 @@ const QUERY_INSERT_CHALLENGE_PHASE_SCORECARD_ID = 'INSERT INTO phase_criteria (p
  * @param {String} dateStr the date in string format
  */
 function formatDate (dateStr) {
+  if (!dateStr) {
+    return null
+  }
   const date = momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
   logger.info(`Formatting date ${dateStr} New Date ${date}`)
   return date
@@ -228,18 +231,19 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
  * Update a phase in IFX
  * @param {Number} phaseId the phase ID
  * @param {Number} challengeLegacyId the legacy challenge ID
+ * @param {Date} fixedStartTime the fixed start date
  * @param {Date} startTime the scheduled start date
  * @param {Date} endTime the scheduled end date
  * @param {Date} duration the duration
  * @param {Number} statusTypeId the status type ID
  */
-async function updatePhase (phaseId, challengeLegacyId, startTime, endTime, duration, statusTypeId) {
+async function updatePhase (phaseId, challengeLegacyId, fixedStartTime, startTime, endTime, duration, statusTypeId) {
   const connection = await helper.getInformixConnection()
   let result = null
   try {
     // await connection.beginTransactionAsync()
     const query = await prepare(connection, util.format(QUERY_UPDATE_CHALLENGE_PHASE, phaseId, challengeLegacyId))
-    result = await query.executeAsync([formatDate(startTime), formatDate(endTime), duration, statusTypeId])
+    result = await query.executeAsync([formatDate(fixedStartTime), formatDate(startTime), formatDate(endTime), duration, statusTypeId])
     // await connection.commitTransactionAsync()
   } catch (e) {
     logger.error(`Error in 'updatePhase' ${e}, rolling back transaction`)
