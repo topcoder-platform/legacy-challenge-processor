@@ -810,7 +810,7 @@ processMessage.schema = {
       projectId: Joi.number().integer().positive().allow(null),
       groups: Joi.array().items(Joi.string()),
       startDate: Joi.date(),
-      traceInformation: Joi.object.keys({
+      traceInformation: Joi.object().keys({
         traceId: Joi.string().required(),
         parentSegmentId: Joi.string().required()
       }).optional()
