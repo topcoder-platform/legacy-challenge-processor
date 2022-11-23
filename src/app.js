@@ -71,13 +71,8 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
   }
 
   try {
-    if (topic === config.CREATE_CHALLENGE_TOPIC) {
-      await ProcessorService.processMessage(messageJSON)
-    } else {
-      await ProcessorService.processMessage(messageJSON)
-    }
-
-    // logger.debug('Successfully processed message')
+    await ProcessorService.processMessage(messageJSON)
+    logger.debug('Successfully processed message')
   } catch (err) {
     logger.error(`Error processing message ${JSON.stringify(messageJSON)}`)
     logger.logFullError(err)

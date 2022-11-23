@@ -81,9 +81,9 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
 
   for (const phase of phasesFromIFx) {
-    if (phase.phase_type_id === constants.PhaseTypes.POST_MORTEM) {
-      postMortemPhaseId = phase.project_phase_id
-    }
+    // if (phase.phase_type_id === constants.PhaseTypes.POST_MORTEM) {
+    //   postMortemPhaseId = phase.project_phase_id
+    // }
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
@@ -117,7 +117,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
 
   // if (isSubmissionPhaseOpen && postMortemPhaseId != null) {
   //   logger.info('Submission Phase is open, Remove Post-Mortem Phase', legacyId, postMortemPhaseId)
-  //   // await timelineService.dropPhase(legacyId, postMortemPhaseId)
+  //   await timelineService.dropPhase(legacyId, postMortemPhaseId)
   //   await timelineService.updatePhase(postMortemPhaseId, legacyId, new Date(), new Date(new Date().getTime() + 86400 * 1000), 86400, constants.PhaseStatusTypes.Scheduled)
   // }
 
@@ -632,6 +632,8 @@ async function createChallenge (saveDraftContestDTO, challengeUuid, createdByUse
  * @param {Object} message the kafka message
  */
 async function processMessage (message) {
+  const { traceInformation } = message;
+  logger.info(`processMessage :: ${JSON.stringify(traceInformation)} :: ${JSON.stringify(message)}`)
   if (_.get(message, 'payload.legacy.pureV5Task') || _.get(message, 'payload.legacy.pureV5')) {
     logger.debug(`Challenge ${message.payload.id} is a pure v5 task or challenge. Will skip...`)
     return
@@ -807,7 +809,11 @@ processMessage.schema = {
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
       projectId: Joi.number().integer().positive().allow(null),
       groups: Joi.array().items(Joi.string()),
-      startDate: Joi.date()
+      startDate: Joi.date(),
+      traceInformation: Joi.object.keys({
+        traceId: Joi.string().required(),
+        parentSegmentId: Joi.string().required()
+      }).optional()
     }).unknown(true).required()
   }).required()
 }
