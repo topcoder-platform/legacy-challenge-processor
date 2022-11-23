@@ -13,8 +13,8 @@ RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
 RUN apt-get -qq update && \
     apt-get -qq install -y wget gcc-6 g++-6 make xz-utils python2.7 git curl
 
-RUN wget -q -O node16.tar.xz https://nodejs.org/dist/v16.18.1/node-v16.18.1-linux-x64.tar.xz \
-   && tar xfJ node16.tar.xz && rm -rf node16.tar.xz
+RUN wget -q -O node10.tar.xz https://nodejs.org/dist/v10.16.3/node-v10.16.3-linux-x64.tar.xz \
+   && tar xfJ node10.tar.xz && rm -rf node10.tar.xz
 
 ENV SERVERNAME=$servername
 
@@ -32,7 +32,7 @@ ENV CLIENT_LOCALE=en_US.utf8
 ENV DB_LOCALE=en_US.utf8
 ENV DBDATE Y4MD-
 ENV DBDELIMITER "|"
-ENV PATH /home/informix/node-v16.18.1-linux-x64/bin:${INFORMIXDIR}/bin:${INFORMIXDIR}/lib:${INFORMIXDIR}/lib/esql:${PATH}
+ENV PATH /home/informix/node-v10.16.3-linux-x64/bin:${INFORMIXDIR}/bin:${INFORMIXDIR}/lib:${INFORMIXDIR}/lib/esql:${PATH}
 ENV LD_LIBRARY_PATH ${INFORMIXDIR}/lib:${INFORMIXDIR}/lib/esql:${INFORMIXDIR}/lib/cli
 ENV INFORMIXSQLHOSTS /opt/ibm/informix/etc/sqlhosts.informixoltp_tcp
 ENV USER root
