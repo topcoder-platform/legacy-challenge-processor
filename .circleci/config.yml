@@ -18,6 +18,8 @@ install_deploysuite: &install_deploysuite
 restore_cache_settings_for_build: &restore_cache_settings_for_build
   key: docker-node-modules-{{ checksum "package-lock.json" }}
 
+
+
 save_cache_settings: &save_cache_settings
   key: docker-node-modules-{{ checksum "package-lock.json" }}
   paths:
@@ -29,7 +31,10 @@ builddeploy_steps: &builddeploy_steps
       - run: *install_dependency
       - run: *install_deploysuite
       - restore_cache: *restore_cache_settings_for_build
-      - run: ./build.sh ${APPNAME}
+      - run:
+          name: 'Build ${APPNAME}'
+          command: ./build.sh ${APPNAME}
+          no_output_timeout: 20m
       - save_cache: *save_cache_settings
       - deploy:
           name: Running MasterScript.
