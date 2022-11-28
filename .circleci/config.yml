@@ -34,7 +34,7 @@ builddeploy_steps: &builddeploy_steps
       - run:
           name: 'Build ${APPNAME}'
           command: ./build.sh ${APPNAME}
-          no_output_timeout: 20m
+          no_output_timeout: 35m
       - save_cache: *save_cache_settings
       - deploy:
           name: Running MasterScript.
