@@ -7,6 +7,7 @@
 const _ = require('lodash')
 const Joi = require('@hapi/joi')
 const config = require('config')
+const momentTZ = require('moment-timezone')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
 const constants = require('../constants')
@@ -104,7 +105,24 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
+  let syncStatus
   for (const phase of phasesFromIFx) {
+    if (phase.create_date !== phase.modify_date) {
+      const modifyDate = momentTZ.tz(phase.modify_date, config.TIMEZONE)
+      if (modifyDate.isAfter(momentTZ().subtract(1, 'hours'))) {
+        if (_.isUndefined(syncStatus)) {
+          syncStatus = await helper.getRequest(`${config.V5_CHALLENGE_MIGRATION_API_URL}/sync?legacyId=${legacyId}`)
+        }
+        // If there is pending sync from v4 to v5 do not overwrite.
+        if (_.isArray(syncStatus) && syncStatus.length && syncStatus[0].syncEnded) {
+          if (modifyDate.isAfter(momentTZ(syncStatus[0].syncEnded))) {
+            continue
+          }
+        } else {
+          continue
+        }
+      }
+    }
     const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
     const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
     logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
@@ -119,9 +137,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
       //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
       // update phase
       logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-      const newStatus = v5Equivalent.isOpen
-        ? constants.PhaseStatusTypes.Open
-        : (_.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Scheduled ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+      const newStatus = v5Equivalent.isOpen ? constants.PhaseStatusTypes.Open : _.toInteger(phase.phase_status_id)
       await timelineService.updatePhase(
         phase.project_phase_id,
         legacyId,
