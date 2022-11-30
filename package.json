@@ -36,7 +36,7 @@
     "moment-timezone": "^0.5.32",
     "no-kafka": "^3.4.3",
     "q": "^1.5.1",
-    "showdown": "^1.9.1",
+    "showdown": "^2.0.0",
     "superagent": "^6.0.0",
     "tc-core-library-js": "github:appirio-tech/tc-core-library-js.git#v2.6.4",
     "underscore": "^1.10.2",
