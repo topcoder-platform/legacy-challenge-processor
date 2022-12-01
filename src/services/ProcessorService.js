@@ -104,42 +104,51 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
-  for (const phase of phasesFromIFx) {
-    const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
-    const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
-    logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
-    if (v5Equivalent) {
-      // Compare duration and status
-      // if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
-      // ||
-      // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-      // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-      // const newStatus = v5Equivalent.isOpen
-      //   ? constants.PhaseStatusTypes.Open
-      //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-      // update phase
-      logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-      const newStatus = v5Equivalent.isOpen
-        ? constants.PhaseStatusTypes.Open
-        : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-      await timelineService.updatePhase(
-        phase.project_phase_id,
-        legacyId,
-        v5Equivalent.scheduledStartDate,
-        v5Equivalent.scheduledEndDate,
-        v5Equivalent.duration * 1000,
-        newStatus
-      )
-      // newStatus)
-      // } else {
-      //   logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
-      // }
-    } else {
-      logger.info(`No v5 Equivalent Found for ${phaseName}`)
+  let phaseGroups = {}
+  _.forEach(phasesFromIFx, p => {
+    if (!phaseGroups[p.phase_type_id]) {
+      phaseGroups[p.phase_type_id] = []
     }
-    if (isSelfService && phaseName === 'Review') {
-      // make sure to set the required reviewers to 2
-      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
+    phaseGroups[p.phase_type_id].push(p)
+  })
+  _.forEach(_.cloneDeep(phaseGroups), (pg, pt) => {
+    phaseGroups[pt] = _.sortBy(pg, 'scheduled_start_time')
+  })
+
+  for (const key of _.keys(phaseGroups)) {
+    let phaseOrder = 0
+    let v5Equivalents = undefined
+    for (const phase of phaseGroups[key]) {
+      const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
+      if (_.isUndefined(v5Equivalents)) {
+        v5Equivalents = _.sortBy(_.filter(v5Phases, p => p.name === phaseName), 'scheduledStartDate')
+      }
+      if (v5Equivalents.length > 0) {
+        if (v5Equivalents.length === phaseGroups[key].length) {
+          const v5Equivalent = v5Equivalents[phaseOrder]
+          logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
+          const newStatus = v5Equivalent.isOpen
+            ? constants.PhaseStatusTypes.Open
+            : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
+          await timelineService.updatePhase(
+            phase.project_phase_id,
+            legacyId,
+            v5Equivalent.scheduledStartDate,
+            v5Equivalent.scheduledEndDate,
+            v5Equivalent.duration * 1000,
+            newStatus
+          )
+        } else {
+          logger.info(`number of ${phaseName} does not match`)
+        }
+      } else {
+        logger.info(`No v5 Equivalent Found for ${phaseName}`)
+      }
+      if (isSelfService && phaseName === 'Review') {
+        // make sure to set the required reviewers to 2
+        await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
+      }
+      phaseOrder = phaseOrder + 1
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
