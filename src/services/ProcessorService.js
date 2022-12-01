@@ -127,6 +127,10 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
         if (v5Equivalents.length === phaseGroups[key].length) {
           const v5Equivalent = v5Equivalents[phaseOrder]
           logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
+          let newStatus = _.toInteger(phase.phase_status_id)
+          if (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) {
+            newStatus = constants.PhaseStatusTypes.Scheduled
+          }
           const newStatus = v5Equivalent.isOpen
             ? constants.PhaseStatusTypes.Open
             : _.toInteger(phase.phase_status_id)
