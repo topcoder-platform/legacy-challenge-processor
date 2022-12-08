@@ -125,6 +125,7 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
       await timelineService.updatePhase(
         phase.project_phase_id,
         legacyId,
+        phase.fixed_start_time ? v5Equivalent.scheduledStartDate : null,
         v5Equivalent.scheduledStartDate,
         v5Equivalent.scheduledEndDate,
         v5Equivalent.duration * 1000,
