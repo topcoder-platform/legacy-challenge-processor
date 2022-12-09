@@ -131,12 +131,10 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
           if (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) {
             newStatus = constants.PhaseStatusTypes.Scheduled
           }
-          const newStatus = v5Equivalent.isOpen
-            ? constants.PhaseStatusTypes.Open
-            : _.toInteger(phase.phase_status_id)
           await timelineService.updatePhase(
             phase.project_phase_id,
             legacyId,
+            phase.fixed_start_time ? v5Equivalent.scheduledStartDate : null,
             v5Equivalent.scheduledStartDate,
             v5Equivalent.scheduledEndDate,
             v5Equivalent.duration * 1000,
