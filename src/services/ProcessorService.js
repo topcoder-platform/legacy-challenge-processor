@@ -19,6 +19,7 @@ const paymentService = require('./paymentService')
 const { createOrSetNumberOfReviewers } = require('./selfServiceReviewerService')
 const { disableTimelineNotifications } = require('./selfServiceNotificationService')
 const legacyChallengeService = require('./legacyChallengeService')
+const legacyChallengeReviewService = require('./legacyChallengeReviewService')
 
 /**
  * Drop and recreate phases in ifx
@@ -51,6 +52,30 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
         phase.duration * 1000,
         createdBy
       )
+      //Handle checkpoint phases
+      //Magic numbers: 15=checkpoint submission, 16=checkpoint screen, 17=checkpoint review, 1=registration
+      //For dependencyStart: 1=start, 0=end
+      if(phaseLegacyId==17){
+        logger.info(`Creating phase dependencies for checkpoint phases`)
+
+        const registrationPhaseId = await timelineService.getProjectPhaseId(legacyId, 1)
+        const checkpointSubmissionPhaseId = await timelineService.getProjectPhaseId(legacyId, 15)
+        const checkpointScreeningPhaseId = await timelineService.getProjectPhaseId(legacyId, 16)
+        const checkpointReviewPhaseId = await timelineService.getProjectPhaseId(legacyId, 17)
+
+        await timelineService.insertPhaseDependency(registrationPhaseId, checkpointSubmissionPhaseId, 1, createdBy)
+        await timelineService.insertPhaseDependency(checkpointSubmissionPhaseId, checkpointScreeningPhaseId, 0, createdBy)
+        await timelineService.insertPhaseDependency(checkpointScreeningPhaseId, checkpointReviewPhaseId, 0, createdBy)
+
+        logger.info(`Creating default scorecard records for checkpoint phases`)
+        //30001364 is the default checkpoint screening scorecard for studio (https://software.topcoder-dev.com/review/actions/ViewScorecard?scid=30001364)
+        await timelineService.insertScorecardId(checkpointScreeningPhaseId, 30001364, createdBy)
+
+        //30001364 is the default checkpoint review scorecard for studio (https://software.topcoder-dev.com/review/actions/ViewScorecard?scid=30001004)
+        await timelineService.insertScorecardId(checkpointReviewPhaseId, 30001004, createdBy)
+
+         
+      }
     } else if (!phaseLegacyId) {
       logger.warn(`Could not create phase ${phase.name} on legacy!`)
     }
@@ -79,42 +104,53 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
   logger.debug(`Phases from IFX: ${JSON.stringify(phasesFromIFx)}`)
-  for (const phase of phasesFromIFx) {
-    const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
-    const v5Equivalent = _.find(v5Phases, p => p.name === phaseName)
-    logger.info(`v4 Phase: ${JSON.stringify(phase)}, v5 Equiv: ${JSON.stringify(v5Equivalent)}`)
-    if (v5Equivalent) {
-      // Compare duration and status
-      // if (v5Equivalent.duration * 1000 !== phase.duration * 1 || isSelfService) {
-      // ||
-      // (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) ||
-      // (!v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Open)) {
-      // const newStatus = v5Equivalent.isOpen
-      //   ? constants.PhaseStatusTypes.Open
-      //   : (new Date().getTime() <= new Date(v5Equivalent.scheduledEndDate).getTime() ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-      // update phase
-      logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
-      const newStatus = v5Equivalent.isOpen
-        ? constants.PhaseStatusTypes.Open
-        : (_.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Scheduled ? constants.PhaseStatusTypes.Scheduled : constants.PhaseStatusTypes.Closed)
-      await timelineService.updatePhase(
-        phase.project_phase_id,
-        legacyId,
-        v5Equivalent.scheduledStartDate,
-        v5Equivalent.scheduledEndDate,
-        v5Equivalent.duration * 1000,
-        newStatus // phase.phase_status_id
-      )
-      // newStatus)
-      // } else {
-      //   logger.info(`Durations for ${phaseName} match: ${v5Equivalent.duration * 1000} === ${phase.duration}`)
-      // }
-    } else {
-      logger.info(`No v5 Equivalent Found for ${phaseName}`)
+  let phaseGroups = {}
+  _.forEach(phasesFromIFx, p => {
+    if (!phaseGroups[p.phase_type_id]) {
+      phaseGroups[p.phase_type_id] = []
     }
-    if (isSelfService && phaseName === 'Review') {
-      // make sure to set the required reviewers to 2
-      await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
+    phaseGroups[p.phase_type_id].push(p)
+  })
+  _.forEach(_.cloneDeep(phaseGroups), (pg, pt) => {
+    phaseGroups[pt] = _.sortBy(pg, 'scheduled_start_time')
+  })
+
+  for (const key of _.keys(phaseGroups)) {
+    let phaseOrder = 0
+    let v5Equivalents = undefined
+    for (const phase of phaseGroups[key]) {
+      const phaseName = _.get(_.find(phaseTypes, pt => pt.phase_type_id === phase.phase_type_id), 'name')
+      if (_.isUndefined(v5Equivalents)) {
+        v5Equivalents = _.sortBy(_.filter(v5Phases, p => p.name === phaseName), 'scheduledStartDate')
+      }
+      if (v5Equivalents.length > 0) {
+        if (v5Equivalents.length === phaseGroups[key].length) {
+          const v5Equivalent = v5Equivalents[phaseOrder]
+          logger.debug(`Will update phase ${phaseName}/${v5Equivalent.name} from ${phase.duration} to duration ${v5Equivalent.duration * 1000} milli`)
+          let newStatus = _.toInteger(phase.phase_status_id)
+          if (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) {
+            newStatus = constants.PhaseStatusTypes.Scheduled
+          }
+          await timelineService.updatePhase(
+            phase.project_phase_id,
+            legacyId,
+            phase.fixed_start_time ? v5Equivalent.scheduledStartDate : null,
+            v5Equivalent.scheduledStartDate,
+            v5Equivalent.scheduledEndDate,
+            v5Equivalent.duration * 1000,
+            newStatus
+          )
+        } else {
+          logger.info(`number of ${phaseName} does not match`)
+        }
+      } else {
+        logger.info(`No v5 Equivalent Found for ${phaseName}`)
+      }
+      if (isSelfService && phaseName === 'Review') {
+        // make sure to set the required reviewers to 2
+        await createOrSetNumberOfReviewers(_.toString(phase.project_phase_id), _.toString(numOfReviewers), _.toString(createdBy))
+      }
+      phaseOrder = phaseOrder + 1
     }
   }
   // TODO: What about iterative reviews? There can be many for the same challenge.
@@ -701,6 +737,28 @@ async function processMessage (message) {
     throw new Error(`Error getting challenge by id - Error: ${JSON.stringify(e)}`)
   }
 
+  // If iterative review is open
+  if (_.find(_.get(message.payload, 'phases'), p => p.isOpen && p.name === 'Iterative Review')) {
+    // Try to read reviews and insert them into informix DB
+    if (message.payload.metadata && message.payload.legacy.reviewScorecardId) {
+      let orReviewFeedback = _.find(message.payload.metadata, meta => meta.name === 'or_review_feedback')
+      let orReviewScore = _.find(message.payload.metadata, meta => meta.name === 'or_review_score')
+      if (!_.isUndefined(orReviewFeedback) && !_.isUndefined(orReviewScore)) {
+        orReviewFeedback = JSON.parse(orReviewFeedback)
+        const reviewResponses = []
+        _.each(orReviewFeedback, (value, key) => {
+          const questionId = _.get(_.find(constants.scorecardQuestionMapping[message.payload.legacy.reviewScorecardId], item => _.toString(item.questionId) === _.toString(key) || _.toLower(item.description) === _.toLower(key)), 'questionId')
+          reviewResponses.push({
+            questionId,
+            answer: value
+          })
+        })
+        orReviewScore = _.toNumber(orReviewFeedback)
+        await legacyChallengeReviewService.insertReview(legacyId, message.payload.legacy.reviewScorecardId, orReviewScore, reviewResponses, createdByUserId)
+      }
+    }
+  }
+
   if (message.payload.status && challenge) {
     // Whether we need to sync v4 ES again
     let needSyncV4ES = false
@@ -788,7 +846,7 @@ processMessage.schema = {
       prizeSets: Joi.array().items(Joi.object().keys({
         type: Joi.string().valid(_.values(constants.prizeSetTypes)).required(),
         prizes: Joi.array().items(Joi.object().keys({
-          value: Joi.number().positive().required()
+          value: Joi.number().min(0).required()
         }).unknown(true))
       }).unknown(true)).min(1),
       tags: Joi.array().items(Joi.string().required()).min(1), // tag names
