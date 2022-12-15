@@ -48,23 +48,6 @@ const challengeStatuses = {
   CancelledPaymentFailed: 'Cancelled - Payment Failed'
 }
 
-const scorecardQuestionMapping = {
-  30002212: [
-    {
-      questionId: 30007531,
-      description: 'Does the submission sufficiently satisfy the requirements as described in the provided specification?'
-    },
-    {
-      questionId: 30007533,
-      description: 'How would you rate the work ethic of this submitter?'
-    },
-    {
-      questionId: 30007532,
-      description: 'How would you rate the quality of this submitters work?'
-    }
-  ]
-}
-
 const PhaseStatusTypes = {
   Scheduled: 1,
   Open: 2,
@@ -172,6 +155,5 @@ module.exports = {
   challengeStatuses,
   PhaseStatusTypes,
   prizeTypesIds,
-  supportedMetadata,
-  scorecardQuestionMapping
+  supportedMetadata
 }
