@@ -29,6 +29,16 @@ function extractMarkup (challenge, defaultValue) {
 }
 
 /**
+ * Extract Admin Fee
+ * @param {Object} challenge the challenge object
+ * @param {Any} defaultValue the default value
+ */
+function extractAdminFee (challenge, defaultValue) {
+  // TODO for now just return 0
+  return _.toString(_.get(challenge, 0, defaultValue))
+}
+
+/**
  * Extract submission limit
  * @param {Object} challenge the challenge object
  * @param {Any} defaultValue the default value
@@ -192,6 +202,7 @@ function extractEstimateEffortOnsite (challenge, defaultValue) {
 
 module.exports = {
   extractMarkup,
+  extractAdminFee,
   extractBillingProject,
   extractSubmissionLimit,
   extractSpecReviewCost,
