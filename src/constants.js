@@ -82,11 +82,6 @@ const supportedMetadata = {
     defaultValue: null,
     description: 'Billing Project'
   },
-  31: {
-    method: metadataExtractor.extractAdminFee,
-    defaultValue: 0,
-    description: 'Admin Fee'
-  },
   30: {
     method: metadataExtractor.extractDrPoints,
     defaultValue: 0,
