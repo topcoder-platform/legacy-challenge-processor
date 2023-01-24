@@ -1,0 +1,13 @@
+
+services:
+  app:
+    entrypoint:
+    - sleep
+    - infinity
+    image: node:12.22.7-buster
+    platform: linux/amd64
+    init: true
+    volumes:
+    - type: bind
+      source: /var/run/docker.sock
+      target: /var/run/docker.sock
