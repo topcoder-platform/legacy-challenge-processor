@@ -99,7 +99,7 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
  * @param {Boolean} isSelfService is the challenge self-service
  * @param {String} createdBy the created by
  */
-async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService, numOfReviewers) {
+async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService, numOfReviewers, isBeingActivated) {
   const phaseTypes = await timelineService.getPhaseTypes()
   const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
   logger.debug(`Phases from v5: ${JSON.stringify(v5Phases)}`)
@@ -131,6 +131,17 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
           if (v5Equivalent.isOpen && _.toInteger(phase.phase_status_id) === constants.PhaseStatusTypes.Closed) {
             newStatus = constants.PhaseStatusTypes.Scheduled
           }
+
+          if (isBeingActivated && ['Registration', 'Submission'].indexOf(v5Equivalent.name) != -1) {
+            const scheduledStartDate = v5Equivalent.scheduledStartDate;
+            const now = new Date().getTime();
+            if (scheduledStartDate != null && new Date(scheduledStartDate).getTime() < now) {
+              newStatus = constants.PhaseStatusTypes.Open;
+            }
+
+            logger.debug(`Challenge phase ${v5Equivalent.name} status is being set to: ${newStatus} on challenge activation.`)
+          }
+
           await timelineService.updatePhase(
             phase.project_phase_id,
             legacyId,
@@ -138,7 +149,8 @@ async function syncChallengePhases (legacyId, v5Phases, createdBy, isSelfService
             v5Equivalent.scheduledStartDate,
             v5Equivalent.scheduledEndDate,
             v5Equivalent.duration * 1000,
-            newStatus
+            newStatus,
+            isBeingActivated && newStatus == constants.PhaseStatusTypes.Open ? new Date() : null
           )
         } else {
           logger.info(`number of ${phaseName} does not match`)
@@ -759,11 +771,14 @@ async function processMessage (message) {
     }
   }
 
+  let isBeingActivated = false;
+
   if (message.payload.status && challenge) {
     // Whether we need to sync v4 ES again
     let needSyncV4ES = false
     // logger.info(`The status has changed from ${challenge.currentStatus} to ${message.payload.status}`)
     if (message.payload.status === constants.challengeStatuses.Active && challenge.currentStatus !== constants.challengeStatuses.Active) {
+      isBeingActivated = true;
       logger.info('Activating challenge...')
       const activated = await activateChallenge(legacyId)
       logger.info(`Activated! ${JSON.stringify(activated)}`)
@@ -790,7 +805,7 @@ async function processMessage (message) {
 
     if (!_.get(message.payload, 'task.isTask')) {
       const numOfReviewers = 2
-      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers)
+      await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers, isBeingActivated)
       needSyncV4ES = true
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
