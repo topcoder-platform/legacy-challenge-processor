@@ -6,7 +6,7 @@ require('./bootstrap')
 const _ = require('lodash')
 const config = require('config')
 const Kafka = require('no-kafka')
-// const healthcheck = require('@topcoder-platform/topcoder-healthcheck-dropin')
+const healthcheck = require('@topcoder-platform/topcoder-healthcheck-dropin')
 const logger = require('./common/logger')
 const helper = require('./common/helper')
 const ProcessorService = require('./services/ProcessorService')
@@ -110,7 +110,7 @@ consumer
   // consume configured topics
   .then(() => {
     logger.info('Initialized.......')
-    // healthcheck.init([check])
+    healthcheck.init([check])
     logger.info('Adding topics successfully.......')
     logger.info(topics)
     logger.info('Kick Start.......')
