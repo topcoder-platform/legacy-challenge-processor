@@ -58,5 +58,8 @@
       "test/unit/test.js",
       "test/e2e/test.js"
     ]
+  },
+  "volta": {
+    "node": "12.22.12"
   }
 }
