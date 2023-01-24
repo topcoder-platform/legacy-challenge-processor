@@ -3,7 +3,7 @@ services:
     entrypoint:
     - sleep
     - infinity
-    image: node:12.22.7-buster
+    image: node:10.15.1
     platform: linux/amd64
     init: true
     volumes:
