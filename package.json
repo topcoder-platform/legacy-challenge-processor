@@ -44,7 +44,7 @@
     "winston": "^3.3.3"
   },
   "engines": {
-    "node": "10.x"
+    "node": "12.x"
   },
   "standard": {
     "env": [
@@ -58,5 +58,8 @@
       "test/unit/test.js",
       "test/e2e/test.js"
     ]
+  },
+  "volta": {
+    "node": "12.22.12"
   }
 }
