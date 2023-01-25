@@ -20,6 +20,7 @@ const { createOrSetNumberOfReviewers } = require('./selfServiceReviewerService')
 const { disableTimelineNotifications } = require('./selfServiceNotificationService')
 const legacyChallengeService = require('./legacyChallengeService')
 const legacyChallengeReviewService = require('./legacyChallengeReviewService')
+const phaseCriteriaService = require('./phaseCriteriaService');
 
 /**
  * Drop and recreate phases in ifx
@@ -90,6 +91,79 @@ async function recreatePhases (legacyId, v5Phases, createdBy) {
     }
   }
   logger.info('recreatePhases :: end')
+}
+
+async function addPhaseConstraints(legacyId, v5Phases, createdBy) {
+  logger.info(`addPhaseConstraints :: start: ${legacyId}, ${JSON.stringify(v5Phases)}`)
+  const allPhaseCriteria = await phaseCriteriaService.getPhaseCriteria();
+  logger.info(`addPhaseConstraints :: allPhaseCriteria: ${JSON.stringify(allPhaseCriteria)}`)
+
+  const phaseTypes = await timelineService.getPhaseTypes()
+  logger.info(`addPhaseConstraints :: phaseTypes: ${JSON.stringify(phaseTypes)}`)
+  
+  const phasesFromIFx = await timelineService.getChallengePhases(legacyId)
+
+  for (const phase of v5Phases) {
+    logger.info(`addPhaseConstraints :: phase: ${legacyId} -> ${JSON.stringify(phase)}`)
+    if (phase.constraints == null || phase.constraints.length === 0) continue;
+
+    const phaseLegacyId = _.get(_.find(phaseTypes, pt => pt.name === phase.name), 'phase_type_id')
+    const existingLegacyPhase = _.find(phasesFromIFx, p => p.phase_type_id === phaseLegacyId)
+
+    const projectPhaseId = _.get(existingLegacyPhase, 'project_phase_id')
+    if (!projectPhaseId) {
+      logger.warn(`Could not find phase ${phase.name} on legacy!`)
+      continue 
+    }
+
+    let constraintName = null;
+    let constraintValue = null
+
+    if (phase.name === 'Submission') {
+      const numSubmissionsConstraint = phase.constraints.find(c => c.name === 'Number of Submissions')
+      if (numSubmissionsConstraint) {
+        constraintName = 'Submission Number'
+        constraintValue = numSubmissionsConstraint.value
+      }
+    }
+
+    if (phase.name === 'Registration') { 
+      const numRegistrantsConstraint = phase.constraints.find(c => c.name === 'Number of Registrants')
+      if (numRegistrantsConstraint) {
+        constraintName = 'Registration Number'
+        constraintValue = numRegistrantsConstraint.value
+      }
+    }
+
+    if (phase.name === 'Review') {
+      const numReviewersConstraint = phase.constraints.find(c => c.name === 'Number of Reviewers')
+      if (numReviewersConstraint) {
+        constraintName = 'Reviewer Number'
+        constraintValue = numReviewersConstraint.value
+      }
+    }
+
+    // We have an interesting situation if a submission phase constraint was added but
+    // no registgration phase constraint was added. This ends up opening Post-Mortem
+    // phase if registration closes with 0 submissions.
+    // For now I'll leave it as is and handle this better in the new Autopilot implementation
+    // A quick solution would have been adding a registration constraint with value 1 if none is provided when there is a submission phase constraint
+
+    if (constraintName && constraintValue) {
+      const phaseCriteriaTypeId = _.get(_.find(allPhaseCriteria, pc => pc.name === constraintName), 'phase_criteria_type_id')
+      if (phaseCriteriaTypeId) {
+        logger.debug(`Will create phase constraint ${constraintName} with value ${constraintValue}`)
+        // Ideally we should update the existing phase criteria, but this processor will go away in weeks
+        // and it's a backend processor, so we can just drop and recreate without slowing down anything
+        await phaseCriteriaService.dropPhaseCriteria(projectPhaseId, phaseCriteriaTypeId)
+        await phaseCriteriaService.createPhaseCriteria(projectPhaseId, phaseCriteriaTypeId, constraintValue, createdBy)
+      } else {
+        logger.warn(`Could not find phase criteria type for ${constraintName}`)
+      }
+    }
+
+  }
+  logger.info('addPhaseConstraints :: end')
 }
 
 /**
@@ -806,6 +880,7 @@ async function processMessage (message) {
     if (!_.get(message.payload, 'task.isTask')) {
       const numOfReviewers = 2
       await syncChallengePhases(legacyId, message.payload.phases, createdByUserId, _.get(message, 'payload.legacy.selfService'), numOfReviewers, isBeingActivated)
+      await addPhaseConstraints(legacyId, message.payload.phases, createdByUserId);
       needSyncV4ES = true
     } else {
       logger.info('Will skip syncing phases as the challenge is a task...')
