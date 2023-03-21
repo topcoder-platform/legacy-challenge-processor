@@ -760,6 +760,7 @@ async function processMessage (message) {
 
   const createdByUserHandle = _.get(message, 'payload.createdBy')
   const updatedByUserHandle = _.get(message, 'payload.updatedBy')
+  const updatedAt = _.get(message, 'payload.updated', new Date().toISOString())
 
   const createdByUserId = await helper.getMemberIdByHandle(createdByUserHandle)
   let updatedByUserId = createdByUserId
@@ -887,9 +888,12 @@ async function processMessage (message) {
     }
     if (message.payload.status === constants.challengeStatuses.CancelledClientRequest && challenge.currentStatus !== constants.challengeStatuses.CancelledClientRequest) {
       logger.info('Cancelling challenge...')
-      await legacyChallengeService.cancelChallenge(legacyId, updatedByUserId)
+      await legacyChallengeService.cancelChallenge(legacyId, updatedByUserId, updatedAt)
       needSyncV4ES = true
+    } else {
+      legacyChallengeService.updateChallengeAudit(legacyId, updatedByUserId, updatedAt)
     }
+
     if (needSyncV4ES) {
       try {
         logger.info(`Resync V4 ES for the legacy challenge ${legacyId}`)
