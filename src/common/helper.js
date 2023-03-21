@@ -4,6 +4,7 @@
 
 const _ = require('lodash')
 const config = require('config')
+const momentTZ = require('moment-timezone')
 const ifxnjs = require('ifxnjs')
 const request = require('superagent')
 const m2mAuth = require('tc-core-library-js').auth.m2m
@@ -190,6 +191,19 @@ async function getMemberIdByHandle (handle) {
   return memberId
 }
 
+/**
+ * Formats a date into a format supported by ifx
+ * @param {String} dateStr the date in string format
+ */
+function formatDate (dateStr) {
+  if (!dateStr) {
+    return null
+  }
+  const date = momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
+  logger.info(`Formatting date ${dateStr} New Date ${date}`)
+  return date
+}
+
 module.exports = {
   getInformixConnection,
   getKafkaOptions,
@@ -200,5 +214,6 @@ module.exports = {
   postRequest,
   postBusEvent,
   forceV4ESFeeder,
-  getMemberIdByHandle
+  getMemberIdByHandle,
+  formatDate
 }

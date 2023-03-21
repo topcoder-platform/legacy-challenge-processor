@@ -7,7 +7,6 @@ const _ = require('lodash')
 const logger = require('../common/logger')
 const util = require('util')
 const config = require('config')
-const momentTZ = require('moment-timezone')
 const IDGenerator = require('../common/idGenerator')
 const helper = require('../common/helper')
 
@@ -32,19 +31,6 @@ const QUERY_INSERT_CHALLENGE_PHASE_DEPENDENCY = 'INSERT INTO phase_dependency (d
 const QUERY_GET_PROJECT_PHASE_ID = 'SELECT project_phase_id as project_phase_id FROM project_phase WHERE project_id = %d AND phase_type_id = %d'
 
 const QUERY_INSERT_CHALLENGE_PHASE_SCORECARD_ID = 'INSERT INTO phase_criteria (project_phase_id, phase_criteria_type_id, parameter, create_user, create_date, modify_user, modify_date) VALUES (?, 1, ?, ?, CURRENT, ?, CURRENT)'
-
-/**
- * Formats a date into a format supported by ifx
- * @param {String} dateStr the date in string format
- */
-function formatDate (dateStr) {
-  if (!dateStr) {
-    return null
-  }
-  const date = momentTZ.tz(dateStr, config.TIMEZONE).format('YYYY-MM-DD HH:mm:ss')
-  logger.info(`Formatting date ${dateStr} New Date ${date}`)
-  return date
-}
 
 /**
  * Prepare Informix statement
@@ -198,8 +184,8 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
       challengeLegacyId,
       phaseTypeId,
       statusTypeId,
-      formatDate(scheduledStartDate),
-      formatDate(scheduledEndDate),
+      helper.formatDate(scheduledStartDate),
+      helper.formatDate(scheduledEndDate),
       duration,
       createdBy,
       createdBy
@@ -209,8 +195,8 @@ async function createPhase (challengeLegacyId, phaseTypeId, statusTypeId, schedu
       challengeLegacyId,
       phaseTypeId,
       statusTypeId,
-      formatDate(scheduledStartDate),
-      formatDate(scheduledEndDate),
+      helper.formatDate(scheduledStartDate),
+      helper.formatDate(scheduledEndDate),
       duration,
       createdBy,
       createdBy
@@ -248,8 +234,8 @@ async function updatePhase (phaseId, challengeLegacyId, fixedStartTime, startTim
       await prepare(connection, util.format(QUERY_UPDATE_CHALLENGE_PHASE_WITH_START_TIME, phaseId, challengeLegacyId))
 
     result = actualStartTime == null ?
-      await query.executeAsync([formatDate(fixedStartTime), formatDate(startTime), formatDate(endTime), duration, statusTypeId]) :
-      await query.executeAsync([formatDate(fixedStartTime), formatDate(startTime), formatDate(endTime), duration, statusTypeId, formatDate(actualStartTime)])
+      await query.executeAsync([helper.formatDate(fixedStartTime), helper.formatDate(startTime), helper.formatDate(endTime), duration, statusTypeId]) :
+      await query.executeAsync([helper.formatDate(fixedStartTime), helper.formatDate(startTime), helper.formatDate(endTime), duration, statusTypeId, helper.formatDate(actualStartTime)])
 
     // await connection.commitTransactionAsync()
   } catch (e) {
