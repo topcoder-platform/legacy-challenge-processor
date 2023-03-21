@@ -891,7 +891,7 @@ async function processMessage (message) {
       await legacyChallengeService.cancelChallenge(legacyId, updatedByUserId, updatedAt)
       needSyncV4ES = true
     } else {
-      legacyChallengeService.updateChallengeAudit(legacyId, updatedByUserId, updatedAt)
+      await legacyChallengeService.updateChallengeAudit(legacyId, updatedByUserId, updatedAt)
     }
 
     if (needSyncV4ES) {
