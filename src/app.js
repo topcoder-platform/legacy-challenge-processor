@@ -64,7 +64,8 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
     const m2mToken = await helper.getM2MToken()
     const v5Challenge = await helper.getRequest(`${config.V5_CHALLENGE_API_URL}/${challengeUuid}`, m2mToken)
     // TODO : Cleanup. Pulling the billingAccountId from the payload, it's not part of the challenge object
-    messageJSON.payload = { billingAccountId: messageJSON.payload.billingAccountId, ...v5Challenge.body }
+    const billingAccountId= _.get(v5Challenge, 'billing.billingAccountId', messageJSON.payload.billingAccountId)
+    messageJSON.payload = { billingAccountId, ...v5Challenge.body }
   } catch (err) {
     logger.debug('Failed to fetch challenge information')
     logger.logFullError(err)
